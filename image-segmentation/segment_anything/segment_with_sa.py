@@ -23,10 +23,10 @@ def show_anns(anns):
             img[:,:,i] = color_mask[i]
         ax.imshow(np.dstack((img, m * 0.35)))
 
-def show_image(img, masks=None, with_masks=False):
+def show_image(img, masks=None):
     plt.figure(figsize=(20,20))
     plt.imshow(img)
-    if with_masks:
+    if masks is not None:
         show_anns(masks)
     plt.axis('off')
     plt.show()
@@ -36,7 +36,18 @@ def generate_masks(image, sam_checkpoint, model_type):
     sam.to(device="cuda")
     mask_generator = SamAutomaticMaskGenerator(sam)
     masks = mask_generator.generate(image)
-        
+    return masks
+
+def inspect_masks(masks):
+    print("The number of masks extracted is {}".format(len(masks)))
+    first_mask = masks[0]
+    print(first_mask['segmentation'])
+    print(first_mask['bbox'])
+    print(first_mask['area'])
+    print(first_mask['predicted_iou'])
+    print(first_mask['crop_box'])
+    print(first_mask['point_coords'])
+
 if __name__ == "__main__":
     eg_img_path = "../waterworld_imgs/example.png"
     image = load_img_and_convert_to_three_channels(eg_img_path)
@@ -44,5 +55,5 @@ if __name__ == "__main__":
     sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
     model_type="vit_h"
     masks = generate_masks(image, sam_checkpoint, model_type)
-    show_image(image, masks, with_masks=True)
-    print("Done with getting the masks. Need to inspect them now")
+    show_image(image, masks)
+    inspect_masks(masks)
