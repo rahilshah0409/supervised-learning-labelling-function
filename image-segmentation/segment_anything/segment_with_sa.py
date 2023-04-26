@@ -51,9 +51,12 @@ def inspect_masks(masks):
 if __name__ == "__main__":
     eg_img_path = "../waterworld_imgs/example.png"
     image = load_img_and_convert_to_three_channels(eg_img_path)
-    # print(image)
+    print("Loaded and converted image to 3 channel")
     sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
     model_type="vit_h"
+    print("Generating masks using Segment Anything")
     masks = generate_masks(image, sam_checkpoint, model_type)
+    print("Completed mask generation")
     show_image(image, masks)
+    print("Inspecting masks produced")
     inspect_masks(masks)
