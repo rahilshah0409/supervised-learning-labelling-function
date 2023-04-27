@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 sys.path.insert(1, "..")
 import img_utils as utils
 from sklearn.cluster import KMeans
+from PIL import Image
 
 if __name__ == "__main__":
     print("This program is meant to segment an example image with the help of kmeans clustering")
@@ -13,6 +14,7 @@ if __name__ == "__main__":
     kmeans = KMeans(n_clusters=8, random_state=0).fit(img_2d)
     to_show = kmeans.cluster_centers_[kmeans.labels_]
     cluster_pic = to_show.reshape(img.shape[0], img.shape[1], img.shape[2])
-    plt.imshow(cluster_pic)
-    plt.show()
+    utils.save_image(cluster_pic, "../saved_images/clustered.jpg")
+    # plt.imshow(cluster_pic)
+    # plt.show()
 

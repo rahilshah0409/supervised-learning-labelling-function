@@ -63,5 +63,6 @@ if __name__ == "__main__":
     markers = create_markers(sure_fg, unknown)
     markers = cv.watershed(three_channel_img, markers)
     three_channel_img[markers == -1] = [255, 0, 0]
+    utils.save_image(three_channel_img, "../saved_images/watershed.jpg")
     plt.imshow(three_channel_img, vmin=0, vmax=255)
     plt.show()
