@@ -15,11 +15,14 @@ def run_agent(env, num_episodes, random_seed=None):
     ep_durs = []
     states_traversed = []
     events_per_episode = []
+    img_dir_path = "../image_segmentation/ww_trace_rand/"
+    base_filename = "env_rand_step"
     for ep in range(num_episodes):
         print("Episode {} in progress".format(ep + 1))
 
         state = env.reset()
         # Some rendering and saving of the image you get. INSERT HERE
+        env.save_and_render(img_dir_path, base_filename, 0)
         states = []
         states.append(state)
 
@@ -31,9 +34,10 @@ def run_agent(env, num_episodes, random_seed=None):
             if random_seed is not None:
                 random_seed += 2
             next_state, _, done, observations = env.step(action)
+            t += 1
+            env.save_and_render(img_dir_path, base_filename, t)
             state = next_state
             states.append(state)
-            t += 1
 
             # if (observations != set()):
             events_observed.append(observations)
@@ -53,4 +57,5 @@ if __name__ == "__main__":
     )
     # img_dir_path = "../image_segmentation/ww_trace/"
     # env.play(img_dir_path)
-    ball_area = env.get_ball_area()
+    run_agent(env, 1)
+    # ball_area = env.get_ball_area()
