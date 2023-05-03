@@ -54,7 +54,7 @@ def create_markers(sure_fg, unknown):
     return markers
 
 if __name__ == "__main__":
-    eg_image_path = "../waterworld_imgs/example.png"
+    eg_image_path = "../eg_ww_img/example.png"
     three_channel_img = utils.load_img_and_convert_to_three_channels(eg_image_path)
     ret, thresh, gray = approximate_estimate(eg_image_path)
     plot_threshold_vs_grey_vs_original(thresh, gray, three_channel_img)
