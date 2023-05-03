@@ -1,4 +1,4 @@
-# from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
+from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
 import math
 import cv2
 from PIL import Image

@@ -57,5 +57,5 @@ if __name__ == "__main__":
     )
     # img_dir_path = "../image_segmentation/ww_trace/"
     # env.play(img_dir_path)
-    run_agent(env, 1)
+    # run_agent(env, 1)
     # ball_area = env.get_ball_area()
