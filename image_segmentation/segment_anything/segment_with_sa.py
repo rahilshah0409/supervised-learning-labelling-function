@@ -128,8 +128,8 @@ def find_mask_colour(masks, image):
 if __name__ == "__main__":
     dir_path = "../eg_ww_img/"
     orig_img_name = "example.png"
-    masks_pkl_filename = "masks.pkl"
-    img_with_masks_filename = "example_with_masks.png"
+    masks_pkl_filename = "masks_small_filter.pkl"
+    img_with_masks_filename = "example_with_masks_small_filter.png"
 
     eg_img_path = dir_path + orig_img_name
     image = load_img_and_convert_to_three_channels(eg_img_path)
