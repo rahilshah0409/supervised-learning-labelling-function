@@ -130,18 +130,19 @@ if __name__ == "__main__":
     orig_img_name = "example.png"
     masks_pkl_filename = "masks.pkl"
     img_with_masks_filename = "example_with_masks.png"
+
     eg_img_path = dir_path + orig_img_name
     image = load_img_and_convert_to_three_channels(eg_img_path)
     print("Loaded and converted image to 3 channels")
+
     sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
     pkl_path = dir_path + masks_pkl_filename
     print("Generating masks using Segment Anything and saving them for later use")
     masks, centres = generate_and_save_masks(image, sam_checkpoint, model_type, pkl_path)
     print("Completed mask generation and masks are saved")
+
     with open(pkl_path, "rb") as f:
         masks = pickle.load(f)
     # show_image(image, masks)
     save_image_with_masks(masks, image, dir_path + img_with_masks_filename)
-    # print("Inspecting masks produced")
-    # inspect_masks(masks)
