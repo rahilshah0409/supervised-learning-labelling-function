@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 import sys
+# The two paths below are hardcoded from my local machine and hence will be useless when working on lab machines
 sys.path.insert(1, "/home/rahilshah/Documents/Year4/FYP/image-segmentation-experimentation/image_segmentation")
 sys.path.insert(1, "/home/rahilshah/Documents/Year4/FYP/image-segmentation-experimentation/image_generation")
 sys.path.insert(1, "..")
@@ -67,6 +68,7 @@ def show_image(img, masks=None):
     plt.axis('off')
     plt.show()
 
+
 def save_image_with_axis(img):
     plt.figure(figsize=(20, 20))
     plt.imshow(img)
@@ -74,12 +76,16 @@ def save_image_with_axis(img):
     plt.savefig("../eg_ww_img/example_with_axis.png")
 
 
-def generate_masks(image, sam_checkpoint, model_type):
+def generate_and_save_masks(image, sam_checkpoint, model_type):
     sam = sam_model_registry[model_type](sam_checkpoint)
     sam.to(device="cuda")
     mask_generator = SamAutomaticMaskGenerator(sam)
     masks = mask_generator.generate(image)
-    return masks
+    masks = filter_small_masks(masks, 100)
+    masks, centres = find_mask_colour(masks, image)
+    with open("../eg_ww_img/masks.pkl", "wb") as f:
+        pickle.dump(masks, f)
+    return masks, centres
 
 
 def inspect_masks(masks):
@@ -101,45 +107,28 @@ def filter_small_masks(masks, uncertainty):
 # Either can look at the individual pixels or look at the centre of the box that surrounds the box. Prefer the latter. Assuming x increases as you go to the right and y increases as you go down. Pretty sure the flooring doesn't matter in this function, it is just so I can get whole numbers that I can then use as co-ords
 def find_mask_colour(masks, image):
     plt.figure(figsize=(20, 20))
+    centres = []
     for mask in masks:
         [x, y, width, height] = mask['bbox']
         x_centre = x + math.floor(width / 2)
         y_centre = y + math.floor(height / 2)
-        plt.plot(x_centre, y_centre, 'o', color="black")
-        rgb_colour = image[x_centre, y_centre, :]
-        mask['colour'] = rgb_colour
-    plt.imshow(image)
-    plt.axis('on')
-    plt.savefig("../eg_ww_img/example_with_mask_centres.png")
-    return masks
+        centres.append((x_centre, y_centre))
+        bgr_colour = image[y_centre, x_centre, :]
+        mask['colour'] = bgr_colour
+    return masks, centres
 
 
 if __name__ == "__main__":
-    # print(ball_area)
     eg_img_path = "../eg_ww_img/example.png"
     image = load_img_and_convert_to_three_channels(eg_img_path)
-    save_image_with_axis(image)
-    # colour_ixs = []
-    # for i in range(len(image)):
-    #     for j in range(len(image[0])):
-    #         if image[i, j, 0] != 255 or image[i, j, 1] != 255 or image[i, j, 2] != 255:
-    #             colour_ixs.append((i, j))
-    # print(colour_ixs)
     print("Loaded and converted image to 3 channels")
-    # sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
-    # model_type = "vit_h"
-    # print("Generating masks using Segment Anything")
-    # masks = generate_masks(image, sam_checkpoint, model_type)
-    # print("Completed mask generation")
-    # print("Processing of masks")
-    # masks = filter_small_masks(masks, 100)
-    # with open("../eg_ww_img/masks.pkl", "wb") as f:
-    #     pickle.dump(masks, f)
-    # with open("../eg_ww_img/masks.pkl", "rb") as f:
-    #     masks = pickle.load(f)
-    # masks = find_mask_colour(masks, image)
-    # for mask in masks:
-    #     print(mask['colour'])
+    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
+    model_type = "vit_h"
+    # print("Generating masks using Segment Anything and saving them for later use")
+    # masks, centres = generate_and_save_masks(image, sam_checkpoint, model_type)
+    # print("Completed mask generation and masks are saved")
+    with open("../eg_ww_img/masks.pkl", "rb") as f:
+        masks = pickle.load(f)
     # show_image(image, masks)
     # save_image_with_masks(image, masks)
     # print("Inspecting masks produced")
