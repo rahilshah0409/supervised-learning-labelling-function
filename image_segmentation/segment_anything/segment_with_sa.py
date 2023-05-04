@@ -126,8 +126,8 @@ def find_mask_colour(masks, image):
 
 
 if __name__ == "__main__":
-    dir_path = "../eg_ww_img/"
-    orig_img_name = "example.png"
+    dir_path = "../colliding_ww_img/"
+    orig_img_name = "colliding_example.png"
     masks_pkl_filename = "masks_small_filter.pkl"
     img_with_masks_filename = "example_with_masks_small_filter.png"
 
