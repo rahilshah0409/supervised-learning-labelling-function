@@ -88,7 +88,7 @@ def generate_and_save_masks(image, sam_checkpoint, model_type, pkl_path):
     sam.to(device="cuda")
     mask_generator = SamAutomaticMaskGenerator(sam)
     masks = mask_generator.generate(image)
-    masks = filter_masks(masks, lower_uncertainty=100, upper_uncertainty=100)
+    masks = filter_masks(masks, lower_uncertainty=100, upper_uncertainty=200)
     masks, centres = find_mask_colour(masks, image)
     with open(pkl_path, "wb") as f:
         pickle.dump(masks, f)
@@ -97,13 +97,8 @@ def generate_and_save_masks(image, sam_checkpoint, model_type, pkl_path):
 
 def inspect_masks(masks):
     print("The number of masks extracted is {}".format(len(masks)))
-    first_mask = masks[0]
-    print(first_mask['segmentation'])
-    print(first_mask['bbox'])
-    print(first_mask['area'])
-    print(first_mask['predicted_iou'])
-    print(first_mask['crop_box'])
-    print(first_mask['point_coords'])
+    mask_areas = list(map(lambda mask: mask['area'], masks))
+    print(mask_areas)
 
 
 def filter_masks(masks, lower_uncertainty, upper_uncertainty):
@@ -126,7 +121,7 @@ def find_mask_colour(masks, image):
 
 
 if __name__ == "__main__":
-    dir_path = "../colliding_ww_img/"
+    dir_path = "../single_img_experimentation/colliding_ww_img/"
     orig_img_name = "colliding_example.png"
     masks_pkl_filename = "masks_small_filter.pkl"
     img_with_masks_filename = "example_with_masks_small_filter.png"
@@ -135,14 +130,16 @@ if __name__ == "__main__":
     image = load_img_and_convert_to_three_channels(eg_img_path)
     print("Loaded and converted image to 3 channels")
 
-    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
-    model_type = "vit_h"
     pkl_path = dir_path + masks_pkl_filename
-    print("Generating masks using Segment Anything and saving them for later use")
-    masks, centres = generate_and_save_masks(image, sam_checkpoint, model_type, pkl_path)
-    print("Completed mask generation and masks are saved")
+
+    # sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
+    # model_type = "vit_h"
+    # print("Generating masks using Segment Anything and saving them for later use")
+    # masks, centres = generate_and_save_masks(image, sam_checkpoint, model_type, pkl_path)
+    # print("Completed mask generation and masks are saved")
 
     with open(pkl_path, "rb") as f:
         masks = pickle.load(f)
     # show_image(image, masks)
-    save_image_with_masks(masks, image, dir_path + img_with_masks_filename)
+    # save_image_with_masks(masks, image, dir_path + img_with_masks_filename)
+    inspect_masks(masks)
