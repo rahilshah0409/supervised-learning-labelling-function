@@ -83,13 +83,16 @@ def save_image_with_axis(img):
     plt.axis('on')
     plt.savefig("../eg_ww_img/example_with_axis.png")
 
-
-def generate_and_save_masks(image, sam_checkpoint, model_type, pkl_path):
+def generate_and_filter_masks(image, sam_checkpoint, model_type):
     sam = sam_model_registry[model_type](sam_checkpoint)
     sam.to(device="cuda")
     mask_generator = SamAutomaticMaskGenerator(sam)
     masks = mask_generator.generate(image)
     masks = filter_masks(masks, lower_uncertainty=100, upper_uncertainty=200)
+    return masks
+
+def generate_and_save_masks(image, sam_checkpoint, model_type, pkl_path):
+    masks = generate_and_filter_masks(image, sam_checkpoint, model_type)
     masks, centres = find_mask_colours(masks, image)
     with open(pkl_path, "wb") as f:
         pickle.dump(masks, f)
