@@ -35,7 +35,7 @@ def run_rand_policy_and_save_traces(env, num_episodes, dir_path, img_base_filena
         states.append(state)
 
         events_observed = [set()]
-        done, terminated, t = False, False, 1
+        done, terminated, t = False, False, 0
 
         while not (done or terminated):
             action = choose_action(random_seed)
@@ -50,7 +50,7 @@ def run_rand_policy_and_save_traces(env, num_episodes, dir_path, img_base_filena
             # if (observations != set()):
             events_observed.append(observations)
             if done:
-                trace_data_i["length"] = t
+                trace_data_i["length"] = t + 1
                 trace_data_i["vectors"] = states
                 trace_data_list.append(trace_data_i)
 
@@ -85,12 +85,15 @@ if __name__ == "__main__":
         "gym_subgoal_automata:WaterWorldRedGreen-v0",
         params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0},
     )
-    dir_path = "../image_segmentation/ww_trace/"
-    img_base_filename = "env_step"
+    dir_path = "../image_segmentation/ww_trace_rand/"
+    img_base_filename = "env_rand_step"
     random_seed = None
     num_episodes = 1
-    # run_rand_policy_and_save_traces(env, num_episodes, dir_path, img_base_filename, random_seed)
-    save_traces_from_manual_play(env, num_episodes, dir_path, img_base_filename)
+    run_rand_policy_and_save_traces(env, num_episodes, dir_path, img_base_filename, random_seed)
+    with open(dir_path + "traces_data.pkl", "rb") as f:
+        trace_data = pickle.load(f)
+    print(trace_data[0]['length'])
+    # save_traces_from_manual_play(env, num_episodes, dir_path, img_base_filename)
     # img_dir_path = "../image_segmentation/ww_trace/"
     # env.play(img_dir_path)
     # ball_area = env.get_ball_area()
