@@ -1,5 +1,6 @@
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
 import math
+import webcolors
 import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -89,16 +90,31 @@ def generate_and_save_masks(image, sam_checkpoint, model_type, pkl_path):
     mask_generator = SamAutomaticMaskGenerator(sam)
     masks = mask_generator.generate(image)
     masks = filter_masks(masks, lower_uncertainty=100, upper_uncertainty=200)
-    masks, centres = find_mask_colour(masks, image)
+    masks, centres = find_mask_colours(masks, image)
     with open(pkl_path, "wb") as f:
         pickle.dump(masks, f)
     return masks, centres
 
+def convert_bgr_to_hex(bgr):
+    return "#{:02x}{:02x}{:02x}".format(bgr[2], bgr[1], bgr[0])
+
+def get_colour_freqs(mask):
+    colour_freq = {}
+    for i in range(len(mask)):
+        for j in range(len(mask[0])):
+            if mask[i][j]:
+                bgr = image[i][j]
+                hex = convert_bgr_to_hex(bgr)
+                colour_freq[hex] = colour_freq.get(hex, 0) + 1
+    return colour_freq
 
 def inspect_masks(masks):
     print("The number of masks extracted is {}".format(len(masks)))
     mask_areas = list(map(lambda mask: mask['area'], masks))
     print(mask_areas)
+    masks_pixels = list(map(lambda mask: mask['segmentation'], masks))
+    colour_freqs = list(map(get_colour_freqs, masks_pixels))
+    print(colour_freqs)
 
 
 def filter_masks(masks, lower_uncertainty, upper_uncertainty):
@@ -107,18 +123,35 @@ def filter_masks(masks, lower_uncertainty, upper_uncertainty):
 
 
 # Either can look at the individual pixels or look at the centre of the box that surrounds the box. Prefer the latter. Assuming x increases as you go to the right and y increases as you go down. Pretty sure the flooring doesn't matter in this function, it is just so I can get whole numbers that I can then use as co-ords
-def find_mask_colour(masks, image):
+def find_mask_colours(masks, image):
     plt.figure(figsize=(20, 20))
     centres = []
+    colours = set()
     for mask in masks:
         [x, y, width, height] = mask['bbox']
         x_centre = x + math.floor(width / 2)
         y_centre = y + math.floor(height / 2)
         centres.append((x_centre, y_centre))
-        bgr_colour = image[y_centre, x_centre, :]
-        mask['colour'] = bgr_colour
-    return masks, centres
+        rgb_colour = image[y_centre, x_centre, :]
+        mask['colour'] = rgb_colour
+        colours.add(webcolors.rgb_to_name(rgb_colour))
+    return masks, centres, colours
 
+def get_event_occured(event_vocab, masks, image):
+    events = set()
+    print("The number of masks extracted is {}".format(len(masks)))
+    mask_areas = np.array(list(map(lambda mask: mask['area'], masks)))
+    if mask_areas.min() < mask_areas.max():
+        small_mask_ix = mask_areas.argmin()
+        mask = masks[small_mask_ix]
+        [x, y, width, height] = mask['bbox']
+        x_centre = x + math.floor(width / 2)
+        y_centre = y + math.floor(height / 2)
+        rgb_colour = image[y_centre, x_centre, :]
+        colour_name = webcolors.rgb_to_name(rgb_colour)
+        if webcolors.rgb_to_name(rgb_colour) in event_vocab:
+            events.add(colour_name)
+    return events
 
 if __name__ == "__main__":
     dir_path = "../single_img_experimentation/colliding_ww_img/"
