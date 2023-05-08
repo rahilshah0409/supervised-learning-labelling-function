@@ -35,49 +35,58 @@ def save_images_with_masks(masks_pkl_loc, trace_imgs_dir, trace_img_base_filenam
         save_image_with_masks(masks, image, path)
         print("Image saved for step {} out of {}".format(i, len(masks_for_ep) - 1))
 
-def generate_event_labels_from_masks(trace_data, trace_dir, masks_for_ep_filename, img_base_filename):
+def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_for_ep_filename, img_base_filename):
     num_eps = len(trace_data)
+    events_for_every_ep = []
     for ep in range(num_eps):
         print("Episode {} in progress".format(ep + 1))
-        events_for_ep = []
+        # Assuming that no event is observed in the initial state. This assumption should be dropped
+        events_for_ep = [set()]
         sub_dir = trace_dir + "trace_" + str(ep) + "/"
         ep_len = trace_data[ep]["length"]
-        with open(sub_dir + masks_for_ep_filename, "rb") as f:
+        results_dir = sub_dir + model_type + "_results/" 
+        masks_pkl_loc = results_dir + masks_for_ep_filename
+        with open(masks_pkl_loc, "rb") as f:
             masks_for_ep = pickle.load(f)
         # Still need to original image here to get the original vocab, can't use the masks alone. This worries me
-        first_image_loc = sub_dir + img_base_filename + str(0) + ".png"
+        first_image_loc = sub_dir + "trace_imgs/" + img_base_filename + str(0) + ".png"
         first_image = load_img_and_convert_to_three_channels(first_image_loc)
         print("Step snapshot loaded.")
         event_vocab = find_mask_colours(masks_for_ep[0], first_image)
         print("Event vocab created.")
         for step in range(1, ep_len):
-            image_loc = sub_dir + img_base_filename + str(step) + ".png"
+            image_loc = sub_dir + "trace_imgs/" + img_base_filename + str(step) + ".png"
             image = load_img_and_convert_to_three_channels(image_loc)
             events = get_event_occured(event_vocab, masks_for_ep[step], image)
             print("Events gathered for step {}".format(step))
             events_for_ep.append(events)
+        event_pkl_loc = results_dir + "events.pkl"  
+        with open(event_pkl_loc, "wb") as f:
+            pickle.dump(events_for_ep, f)
+        events_for_every_ep.append(events_for_ep)
+    
 
 if __name__ == "__main__":
     events_observed = []
     traces_dir = "ww_trace/"
     trace_data_filename = "traces_data.pkl"
     img_base_filename = "env_step"
-    masks_for_ep_filename = "masks_vit_h_small_filter.pkl"
-    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
-    model_type = "vit_h"
+    masks_for_ep_filename = "masks_vit_b_small_filter.pkl"
+    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_b_01ec64.pth"
+    model_type = "vit_b"
 
     with open(traces_dir + trace_data_filename, "rb") as f:
         trace_data = pickle.load(f)
 
     # generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model_type, img_base_filename)
 
-    num_eps = len(trace_data)
-    for i in range(num_eps):
-        trace_sub_dir = traces_dir + "trace_" + str(i) + "/"
-        results_dir = trace_sub_dir + model_type + "_results/"
-        masks_pkl_filename = "masks_" + model_type + "_small_filter.pkl"
-        trace_img_dir = trace_sub_dir + "trace_imgs/"
-        masks_imgs_dir = results_dir + "masks_imgs/" 
-        save_images_with_masks(results_dir + masks_pkl_filename, trace_img_dir, img_base_filename, masks_imgs_dir)
+    # num_eps = len(trace_data)
+    # for i in range(num_eps):
+    #     trace_sub_dir = traces_dir + "trace_" + str(i) + "/"
+    #     results_dir = trace_sub_dir + model_type + "_results/"
+    #     masks_pkl_filename = "masks_" + model_type + "_small_filter.pkl"
+    #     trace_img_dir = trace_sub_dir + "trace_imgs/"
+    #     masks_imgs_dir = results_dir + "masks_imgs/" 
+    #     save_images_with_masks(results_dir + masks_pkl_filename, trace_img_dir, img_base_filename, masks_imgs_dir)
 
-    # generate_event_labels_from_masks(trace_data, trace_dir, masks_for_ep_filename, img_base_filename)
+    generate_event_labels_from_masks(trace_data, traces_dir, model_type, masks_for_ep_filename, img_base_filename)
