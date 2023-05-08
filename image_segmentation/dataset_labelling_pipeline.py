@@ -65,28 +65,39 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fo
             pickle.dump(events_for_ep, f)
         events_for_every_ep.append(events_for_ep)
     
+def inspect_events(events_pkl_loc, model_type):
+    print("Events observed for the results from " + model_type)
+    with open(events_pkl_loc, "rb") as f:
+        events = pickle.load(f)
+    print(events)
 
 if __name__ == "__main__":
     events_observed = []
     traces_dir = "ww_trace/"
     trace_data_filename = "traces_data.pkl"
     img_base_filename = "env_step"
-    masks_for_ep_filename = "masks_vit_b_small_filter.pkl"
-    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_b_01ec64.pth"
-    model_type = "vit_b"
+    masks_for_ep_filename = "masks_vit_h_small_filter.pkl"
+    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
+    model_type = "vit_h"
 
     with open(traces_dir + trace_data_filename, "rb") as f:
         trace_data = pickle.load(f)
 
     # generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model_type, img_base_filename)
 
+    num_eps = len(trace_data)
+    for i in range(num_eps):
+        trace_sub_dir = traces_dir + "trace_" + str(i) + "/"
+        results_dir = trace_sub_dir + model_type + "_results/"
+        masks_pkl_filename = "masks_" + model_type + "_small_filter.pkl"
+        trace_img_dir = trace_sub_dir + "trace_imgs/"
+        masks_imgs_dir = results_dir + "masks_imgs/" 
+        save_images_with_masks(results_dir + masks_pkl_filename, trace_img_dir, img_base_filename, masks_imgs_dir)
+
+    # generate_event_labels_from_masks(trace_data, traces_dir, model_type, masks_for_ep_filename, img_base_filename)
+
     # num_eps = len(trace_data)
     # for i in range(num_eps):
     #     trace_sub_dir = traces_dir + "trace_" + str(i) + "/"
-    #     results_dir = trace_sub_dir + model_type + "_results/"
-    #     masks_pkl_filename = "masks_" + model_type + "_small_filter.pkl"
-    #     trace_img_dir = trace_sub_dir + "trace_imgs/"
-    #     masks_imgs_dir = results_dir + "masks_imgs/" 
-    #     save_images_with_masks(results_dir + masks_pkl_filename, trace_img_dir, img_base_filename, masks_imgs_dir)
-
-    generate_event_labels_from_masks(trace_data, traces_dir, model_type, masks_for_ep_filename, img_base_filename)
+    #     events_pkl_loc = trace_sub_dir + model_type + "_results/events.pkl"
+    #     inspect_events(events_pkl_loc, model_type)
