@@ -23,6 +23,15 @@ def generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model
         with open(sub_dir + masks_for_ep_filename, "wb") as f:
             pickle.dump(masks_for_ep, f)
 
+def save_images_with_masks(masks_pkl_loc, trace_imgs_dir, trace_img_base_filename, dir_to_save_img):
+    with open(masks_pkl_loc, "rb") as f:
+        masks_for_ep = pickle.load(f)
+    for i in range(len(masks_for_ep)):
+        masks = masks_for_ep[i]
+        image_loc = trace_imgs_dir + trace_img_base_filename + str(i)
+        image = load_img_and_convert_to_three_channels(image_loc)
+        save_images_with_masks(masks, image, dir_to_save_img + "env_step" + str[i] + "_masked.png")
+
 def generate_event_labels_from_masks(trace_data, trace_dir, masks_for_ep_filename, img_base_filename):
     num_eps = len(trace_data)
     for ep in range(num_eps):
@@ -50,9 +59,9 @@ if __name__ == "__main__":
     trace_dir = "ww_trace/"
     trace_data_filename = "traces_data.pkl"
     img_base_filename = "env_step"
-    masks_for_ep_filename = "masks_for_ep.pkl"
-    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
-    model_type = "vit_h"
+    masks_for_ep_filename = "masks_vit_b_small_filter.pkl"
+    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_b_01ec64.pth"
+    model_type = "vit_b"
 
     with open(trace_dir + trace_data_filename, "rb") as f:
         trace_data = pickle.load(f)
