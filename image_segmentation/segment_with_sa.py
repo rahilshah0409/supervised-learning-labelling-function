@@ -49,6 +49,7 @@ def save_image_with_masks(masks, image, path):
         ax = plt.gca()
         ax.add_patch(mask_boundary)
     plt.savefig(path)
+    plt.close()
 
 def show_anns(anns):
     if len(anns) == 0:
