@@ -6,22 +6,24 @@ from img_utils import load_img_and_convert_to_three_channels
 
 def generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model_type, img_base_filename):
     num_eps = len(trace_data)
+    masks_for_every_ep = []
     for ep in range(num_eps):
         print("Episode {} in progress".format(ep))
         sub_dir = trace_dir + "trace_" + str(ep) + "/"
         ep_len = trace_data[ep]["length"]
         masks_for_ep = []
         for step in range(ep_len):
-            image_loc = sub_dir + img_base_filename + str(step) + ".png"
+            image_loc = sub_dir + "trace_imgs/" + img_base_filename + str(step) + ".png"
             image = load_img_and_convert_to_three_channels(image_loc)
             print("Starting to generate masks for step {} out of {}".format(step, ep_len - 1))
             masks = generate_and_filter_masks(image, sam_checkpoint, model_type)
             print("Finished generating masks for step {} out of {}".format(step, ep_len - 1))
             masks_for_ep.append(masks)
-        
+        masks_for_every_ep.append(masks_for_ep)
         print("All masks made for this trace. Dumping it via a pickle now.")
-        with open(sub_dir + masks_for_ep_filename, "wb") as f:
+        with open(sub_dir + model_type + "_results/" + masks_for_ep_filename, "wb") as f:
             pickle.dump(masks_for_ep, f)
+    return masks_for_every_ep
 
 def save_images_with_masks(masks_pkl_loc, trace_imgs_dir, trace_img_base_filename, events, dir_to_save_img):
     with open(masks_pkl_loc, "rb") as f:
@@ -61,9 +63,9 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fo
             events = get_event_occured(event_vocab, masks_for_ep[step], image)
             print("Events gathered for step {}".format(step))
             events_for_ep.append(events)
-        # event_pkl_loc = results_dir + "events.pkl"  
-        # with open(event_pkl_loc, "wb") as f:
-        #     pickle.dump(events_for_ep, f)
+        event_pkl_loc = results_dir + "events.pkl"  
+        with open(event_pkl_loc, "wb") as f:
+            pickle.dump(events_for_ep, f)
         events_for_every_ep.append(events_for_ep)
     return events_for_every_ep
     
@@ -75,17 +77,17 @@ def inspect_events(events_pkl_loc, model_type):
 
 if __name__ == "__main__":
     events_observed = []
-    traces_dir = "ww_trace/"
+    traces_dir = "ww_trace_rand/"
     trace_data_filename = "traces_data.pkl"
-    img_base_filename = "env_step"
-    masks_for_ep_filename = "masks_vit_b_small_filter.pkl"
-    # sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
-    model_type = "vit_b"
+    img_base_filename = "env_rand_step"
+    masks_for_ep_filename = "masks_vit_h_small_filter.pkl"
+    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
+    model_type = "vit_h"
 
     with open(traces_dir + trace_data_filename, "rb") as f:
         trace_data = pickle.load(f)
 
-    # generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model_type, img_base_filename)
+    masks_for_every_ep = generate_and_save_masks_for_eps(trace_data, traces_dir, sam_checkpoint, model_type, img_base_filename)
 
     events_for_every_ep = generate_event_labels_from_masks(trace_data, traces_dir, model_type, masks_for_ep_filename, img_base_filename)
 
