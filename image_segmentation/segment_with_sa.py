@@ -39,7 +39,7 @@ ball_area = math.pi * (ball_rad ** 2)
 #         # original_image.paste(img_with_one_mask)
 #     # original_image.save("../saved_images/segment_anything.jpg")
 
-def save_image_with_masks(masks, image, path):
+def save_image_with_masks(masks, image, path, event=None):
     plt.figure(figsize=(20, 20))
     plt.imshow(image)
     plt.axis('on')
@@ -48,6 +48,8 @@ def save_image_with_masks(masks, image, path):
         mask_boundary = patches.Rectangle((x, y), width, height, linewidth=1, edgecolor='r', facecolor='none')
         ax = plt.gca()
         ax.add_patch(mask_boundary)
+    if event is not None:
+        plt.title(str(event))
     plt.savefig(path)
     plt.close()
 
@@ -99,8 +101,8 @@ def generate_and_save_masks(image, sam_checkpoint, model_type, pkl_path):
         pickle.dump(masks, f)
     return masks, centres
 
-def convert_bgr_to_hex(bgr):
-    return "#{:02x}{:02x}{:02x}".format(bgr[2], bgr[1], bgr[0])
+def convert_rgb_to_hex(rgb):
+    return "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
 
 def get_colour_freqs(mask):
     colour_freq = {}
@@ -108,7 +110,7 @@ def get_colour_freqs(mask):
         for j in range(len(mask[0])):
             if mask[i][j]:
                 bgr = image[i][j]
-                hex = convert_bgr_to_hex(bgr)
+                hex = convert_rgb_to_hex(bgr)
                 colour_freq[hex] = colour_freq.get(hex, 0) + 1
     return colour_freq
 
@@ -141,6 +143,7 @@ def find_mask_colours(masks, image):
         colours.add(webcolors.rgb_to_name(rgb_colour))
     return masks, centres, colours
 
+# So far, this method gets the events by looking at the area of every mask and seeing if there is a mask that is smaller, potentially implying that this corresponds to a ball that has something intersecting with it
 def get_event_occured(event_vocab, masks, image):
     events = set()
     print("The number of masks extracted is {}".format(len(masks)))
@@ -153,7 +156,7 @@ def get_event_occured(event_vocab, masks, image):
         y_centre = y + math.floor(height / 2)
         rgb_colour = image[y_centre, x_centre, :]
         colour_name = webcolors.rgb_to_name(rgb_colour)
-        if webcolors.rgb_to_name(rgb_colour) in event_vocab:
+        if colour_name in event_vocab:
             events.add(colour_name)
     return events
 
