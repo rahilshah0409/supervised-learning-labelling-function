@@ -59,6 +59,11 @@ def get_events_from_masks_in_state(event_vocab, masks, image):
     events = set()
     print("The number of masks extracted is {}".format(len(masks)))
     mask_areas = np.array(list(map(lambda mask: mask['area'], masks)))
+    abnormal_mask_indices = extract_abnormal_masks(mask_areas)
+    for ix in abnormal_mask_indices:
+        mask_pixels = masks[ix]['segmentation']
+        colour_distribution = create_colour_distribution(mask_pixels, image)
+        # If there is less of a particular colour or the colour 
     if mask_areas.min() < mask_areas.max():
         small_mask_ix = mask_areas.argmin()
         mask = masks[small_mask_ix]
