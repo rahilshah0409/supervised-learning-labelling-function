@@ -57,7 +57,7 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fo
         results_dir = sub_dir + model_type + "_results/" 
         masks_for_ep = None
         if masks_for_every_ep is None:
-            masks_pkl_loc = results_dir + masks_for_ep_filename
+            masks_pkl_loc = results_dir + "masks.pkl"
             with open(masks_pkl_loc, "rb") as f:
                 masks_for_ep = pickle.load(f)
         else:
