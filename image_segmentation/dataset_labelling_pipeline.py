@@ -1,7 +1,7 @@
 import pickle
 import sys
 sys.path.insert(1, "segment_anything/")
-from segment_with_sa import find_mask_colours, generate_and_filter_masks, get_event_occured, save_image_with_masks
+from segment_with_sa import create_event_vocab, generate_and_filter_masks, get_events_from_masks_in_state, save_image_with_masks
 from img_utils import load_img_and_convert_to_three_channels
 
 def generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model_type, img_base_filename):
@@ -55,12 +55,12 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fo
         first_image_loc = sub_dir + "trace_imgs/" + img_base_filename + str(0) + ".png"
         first_image = load_img_and_convert_to_three_channels(first_image_loc)
         print("Step 0 snapshot loaded.")
-        _, _, event_vocab = find_mask_colours(masks_for_ep[0], first_image)
+        event_vocab = create_event_vocab(masks_for_ep[0], first_image)
         print("Event vocab created.")
         for step in range(1, ep_len):
             image_loc = sub_dir + "trace_imgs/" + img_base_filename + str(step) + ".png"
             image = load_img_and_convert_to_three_channels(image_loc)
-            events = get_event_occured(event_vocab, masks_for_ep[step], image)
+            events = get_events_from_masks_in_state(event_vocab, masks_for_ep[step], image)
             print("Events gathered for step {}".format(step))
             events_for_ep.append(events)
         event_pkl_loc = results_dir + "events.pkl"  
