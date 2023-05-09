@@ -51,7 +51,7 @@ def show_anns(anns):
 def save_image_with_masks(masks, image, path, event=None):
     plt.figure(figsize=(20, 20))
     plt.imshow(image)
-    plt.axis('on')
+    plt.axis('off')
     for mask in masks:
         [x, y, width, height] = mask['bbox']
         mask_boundary = patches.Rectangle((x, y), width, height, linewidth=2, edgecolor='r', facecolor='none')
