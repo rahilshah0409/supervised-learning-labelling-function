@@ -11,19 +11,19 @@ import sys
 sys.path.insert(1, "/home/rahilshah/Documents/Year4/FYP/image-segmentation-experimentation/image_segmentation")
 sys.path.insert(1, "/home/rahilshah/Documents/Year4/FYP/image-segmentation-experimentation/image_generation")
 sys.path.insert(1, "..")
-from img_utils import load_img_and_convert_to_three_channels, get_colour_freqs
+from img_utils import load_img_and_convert_to_three_channels, save_image_with_masks
 # from generate_imgs import ball_area
 
 ball_rad = 15 # default radius, be wary if this changes
 ball_area = math.pi * (ball_rad ** 2)
 
-def inspect_masks(masks, image):
-    print("The number of masks extracted is {}".format(len(masks)))
+def print_mask_info(masks_pkl_path):
+    print("INSPECTING THE MASKS FOUND IN " + masks_pkl_path)
+    with open(masks_pkl_path, "rb") as f:
+        masks = pickle.load(f)
+    print("No of masks: {}".format(len(masks)))
     mask_areas = list(map(lambda mask: mask['area'], masks))
-    print(mask_areas)
-    masks_pixels = list(map(lambda mask: mask['segmentation'], masks))
-    colour_freqs = list(map(lambda mpixels: get_colour_freqs(image, mpixels), masks_pixels))
-    print(colour_freqs)
+    print("Mask areas: " + mask_areas)
 
 
 # Either can look at the individual pixels or look at the centre of the box that surrounds the box. Prefer the latter. Assuming x increases as you go to the right and y increases as you go down. Pretty sure the flooring doesn't matter in this function, it is just so I can get whole numbers that I can then use as co-ords
@@ -70,33 +70,36 @@ def filter_masks_based_on_size(masks, lower_uncertainty, upper_uncertainty):
     return filtered_masks
 
 # Produces masks for a single image, before filtering the masks to extract the relevant ones and saving these masks in a pickle object for later use
-def run_segmentation_on_single_image(img_path, sam_checkpoint, model_type, masks_pkl_dir, save_unfiltered_masks=False):
+def run_segmentation_on_single_image(img_path, sam_checkpoint, model_type, masks_pkl_path, unfiltered_masks_pkl_path=None):
     print("Loading image of the environment")
     image = load_img_and_convert_to_three_channels(img_path)
     print("Generating masks for the image using Segment Anything (" + model_type + ")")
     masks = generate_masks(image, sam_checkpoint, model_type)
-    if save_unfiltered_masks:
-        with open(masks_pkl_dir + "unfiltered_masks_" + model_type + ".pkl", "wb") as f:
+    if unfiltered_masks_pkl_path is not None:
+        with open(unfiltered_masks_pkl_path, "wb") as f:
             pickle.dump(masks, f)
     print("Filtering the masks generated")
     filtered_masks = filter_masks_based_on_size(masks, lower_uncertainty=100, upper_uncertainty=200)
-    with open(masks_pkl_dir + "masks_filtered_on_size_" + model_type + ".pkl", "wb") as f:
+    with open(masks_pkl_path, "wb") as f:
         pickle.dump(filtered_masks, f)
+    return image, masks, filtered_masks
+
+def segment_and_save_image_with_masks(img_path, sam_checkpoint, model_type, masks_pkl_path, img_with_filtered_masks_path, unfiltered_masks_pkl_path, img_with_unfiltered_masks_path):
+    image, unfiltered_masks, filtered_masks = run_segmentation_on_single_image(img_path, sam_checkpoint, model_type, masks_pkl_path, unfiltered_masks_pkl_path)
+    save_image_with_masks(filtered_masks, image, img_with_filtered_masks_path)
+    save_image_with_masks(unfiltered_masks, image, img_with_unfiltered_masks_path)
 
 if __name__ == "__main__":
-    dir_path = "../single_img_experimentation/colliding_ww_img/"
-    orig_img_name = "colliding_example.png"
-    masks_pkl_filename = "masks_small_filter.pkl"
-    img_with_masks_filename = "example_with_masks_small_filter.png"
+    dir_path = "single_img_experimentation/eg_ww_img/"
+    orig_img_name = "example.png"
     eg_img_path = dir_path + orig_img_name
-    pkl_path = dir_path + masks_pkl_filename
-    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
-    model_type = "vit_h"
+    # sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_b_01ec64.pth"
+    model_type = "vit_b"
+    masks_pkl_path = dir_path + "masks_filtered_on_size_" + model_type + ".pkl"
+    unfiltered_masks_pkl_path = dir_path + "unfilterd_masks_" + model_type + ".pkl"
+    img_with_filtered_masks_path = dir_path + "filtered_masks_" + model_type + ".png"
+    img_with_unfiltered_masks_path = dir_path + "unfiltered_masks_" + model_type + ".png"
 
-    run_segmentation_on_single_image(eg_img_path, sam_checkpoint, model_type, dir_path, save_unfiltered_masks=True)
+    # segment_and_save_image_with_masks(eg_img_path, sam_checkpoint, model_type, masks_pkl_path, img_with_filtered_masks_path, unfiltered_masks_pkl_path, img_with_unfiltered_masks_path)
 
-    # with open(pkl_path, "rb") as f:
-    #     masks = pickle.load(f)
-    # show_image(image, masks)
-    # save_image_with_masks(masks, image, dir_path + img_with_masks_filename)
-    # inspect_masks(masks, image)
+    print_mask_info(img_with_unfiltered_masks_path)
