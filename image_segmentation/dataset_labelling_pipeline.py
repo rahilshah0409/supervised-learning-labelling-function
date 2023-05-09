@@ -80,9 +80,9 @@ if __name__ == "__main__":
     traces_dir = "ww_trace_rand/"
     trace_data_filename = "traces_data.pkl"
     img_base_filename = "env_rand_step"
-    masks_for_ep_filename = "masks_vit_h_small_filter.pkl"
-    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
-    model_type = "vit_h"
+    masks_for_ep_filename = "masks_vit_b_small_filter.pkl"
+    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_b_01ec64.pth"
+    model_type = "vit_b"
 
     with open(traces_dir + trace_data_filename, "rb") as f:
         trace_data = pickle.load(f)
