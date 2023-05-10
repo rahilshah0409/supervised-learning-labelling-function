@@ -3,6 +3,7 @@ import cv2 as cv
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 from PIL import Image
+import webcolors
 
 def load_img_and_convert_to_three_channels(path_to_img):
     img = np.asarray(Image.open(path_to_img))
@@ -67,7 +68,7 @@ def get_colour_freqs(mask, image):
     for i in range(len(mask)):
         for j in range(len(mask[0])):
             if mask[i][j]:
-                bgr = image[i][j]
-                hex = convert_rgb_to_hex(bgr)
-                colour_freq[hex] = colour_freq.get(hex, 0) + 1
+                rgb = image[i][j]
+                colour = webcolors.rgb_to_name(rgb)
+                colour_freq[colour] = colour_freq.get(hex, 0) + 1
     return colour_freq
