@@ -48,11 +48,14 @@ def create_event_vocab(masks, image):
 def add_masks_colours(masks, image):
     plt.figure(figsize=(20, 20))
     for mask in masks:
-        [x, y, width, height] = mask['bbox']
-        x_centre = x + math.floor(width / 2)
-        y_centre = y + math.floor(height / 2)
-        rgb_colour = image[y_centre, x_centre, :]
-        mask['colour'] = webcolors.rgb_to_name(rgb_colour)
+        # [x, y, width, height] = mask['bbox']
+        # x_centre = x + math.floor(width / 2)
+        # y_centre = y + math.floor(height / 2)
+        # rgb_colour = image[y_centre, x_centre, :]
+        colour_freqs = get_colour_freqs(mask['segmentation'], image)
+        all_colours_in_mask = list(colour_freqs.keys())
+        mask['colour'] = all_colours_in_mask
+        # mask['colour'] = webcolors.rgb_to_name(rgb_colour)
     return masks
 
 # So far, this method gets the events by looking at the area of every mask and seeing if there is a mask that is smaller, potentially implying that this corresponds to a ball that has something intersecting with it
@@ -131,15 +134,15 @@ if __name__ == "__main__":
     eg_img_path = dir_path + orig_img_name
     sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
-    masks_pkl_path = dir_path + "env_step_masks_filtered_on_size_" + model_type + ".pkl"
-    unfiltered_masks_pkl_path = dir_path + "env_step_unfiltered_masks_" + model_type + ".pkl"
-    img_with_filtered_masks_path = dir_path + "env_step_filtered_masks_" + model_type + ".png"
-    img_with_unfiltered_masks_path = dir_path + "env_step_unfiltered_masks_" + model_type + ".png"
+    masks_pkl_path = dir_path + "masks_filtered_on_size_" + model_type + ".pkl"
+    unfiltered_masks_pkl_path = dir_path + "unfiltered_masks_" + model_type + ".pkl"
+    img_with_filtered_masks_path = dir_path + "filtered_masks_" + model_type + ".png"
+    img_with_unfiltered_masks_path = dir_path + "unfiltered_masks_" + model_type + ".png"
 
-    segment_and_save_image_with_masks(eg_img_path, sam_checkpoint, model_type, masks_pkl_path, img_with_filtered_masks_path, unfiltered_masks_pkl_path, img_with_unfiltered_masks_path)
+    # segment_and_save_image_with_masks(eg_img_path, sam_checkpoint, model_type, masks_pkl_path, img_with_filtered_masks_path, unfiltered_masks_pkl_path, img_with_unfiltered_masks_path)
 
-    # image = load_img_and_convert_to_three_channels(eg_img_path)
-    # print_mask_info(unfiltered_masks_pkl_path, image)
+    image = load_img_and_convert_to_three_channels(eg_img_path)
+    print_mask_info(unfiltered_masks_pkl_path, image)
     # hardcoded_event_vocab = set()
     # hardcoded_event_vocab.add('red')
     # hardcoded_event_vocab.add('lime')
