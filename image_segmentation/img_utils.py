@@ -59,7 +59,7 @@ def save_image_with_masks(masks, image, path, event=None):
         ax = plt.gca()
         ax.add_patch(mask_boundary)
     if event is not None:
-        plt.title(str(event))
+        plt.title(str(event), fontsize=30)
     plt.savefig(path)
     plt.close()
 

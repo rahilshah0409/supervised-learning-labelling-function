@@ -35,13 +35,15 @@ def create_event_vocab(masks, image):
     plt.figure(figsize=(20, 20))
     centres = []
     vocab = set()
+    # This is hardcoded to overcome an obstacle where the agent doesn't get picked up. This hard coding should be removed with a better solution- either we make the ball opaque or figure out a way to get the agent in somehow
+    vocab.add('white')
     for mask in masks:
+        # Looking at just the centre is probably flawed, not in the waterworld where the objects are clean but in other environments where the objects are not so exact
         [x, y, width, height] = mask['bbox']
         x_centre = x + math.floor(width / 2)
         y_centre = y + math.floor(height / 2)
         centres.append((x_centre, y_centre))
         rgb_colour = image[y_centre, x_centre, :]
-        mask['colour'] = rgb_colour
         vocab.add(webcolors.rgb_to_name(rgb_colour))
     return vocab
 
