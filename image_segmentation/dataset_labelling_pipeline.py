@@ -94,11 +94,11 @@ def inspect_events(events_pkl_loc, model_type):
 
 if __name__ == "__main__":
     events_observed = []
-    traces_dir = "ww_trace/"
+    traces_dir = "ww_trace_rand/"
     trace_data_filename = "traces_data.pkl"
-    img_base_filename = "env_step"
-    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_l_0b3195.pth"
-    model_type = "vit_l"
+    img_base_filename = "env_rand_step"
+    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
+    model_type = "vit_h"
     masks_for_ep_filename = "masks_2.pkl"
     filtered_masks_for_ep_fname = "filtered_masks_2.pkl"
     unfiltered_masks_for_ep_fname = "unfiltered_masks_2.pkl"
