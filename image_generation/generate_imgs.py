@@ -52,6 +52,7 @@ def run_rand_policy_and_save_traces(env, num_episodes, dir_path, img_base_filena
             if done:
                 trace_data_i["length"] = t + 1
                 trace_data_i["vectors"] = states
+                trace_data_i["ground_truth"] = events_observed
                 trace_data_list.append(trace_data_i)
 
         events_per_episode.append(events_observed)
@@ -70,9 +71,10 @@ def save_traces_from_manual_play(env, num_episodes, dir_path, img_base_filename)
             "vectors": [],
             "length": 0
         }
-        _, states, _, _ = env.play(sub_dir_path, img_base_filename)
+        _, states, events, _ = env.play(sub_dir_path, img_base_filename)
         trace_data_i["length"] = len(states)
         trace_data_i["vectors"] = states
+        trace_data_i["ground_truth_labels"] = events
         trace_data_list.append(trace_data_i)
 
     with open(dir_path + "traces_data.pkl", "wb") as f:
