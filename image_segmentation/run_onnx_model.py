@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 from segment_anything import sam_model_registry, SamPredictor
 from segment_anything.utils.onnx import SamOnnxModel
 import warnings
-from img_utils import load_img_and_convert_to_three_channels
+from img_utils import load_img_and_convert_to_three_channels, save_image_with_masks
 import onnxruntime
 from onnxruntime.quantization import QuantType
 from onnxruntime.quantization.quantize import quantize_dynamic
+import pickle
 
 def show_mask(mask, ax):
     color = np.array([30/255, 144/255, 255/255, 0.6])
@@ -32,7 +33,7 @@ def export_onnx_model(onnx_model_path, sam):
         "point_coords": {1: "num_points"},
         "point_labels": {1: "num_points"}
     }
-    onnx_model = SamOnnxModel(sam, return_single_mask=True)
+    onnx_model = SamOnnxModel(sam, return_single_mask=False)
     embed_dim = sam.prompt_encoder.embed_dim
     embed_size = sam.prompt_encoder.image_embedding_size
     mask_input_size = [4 * x for x in embed_size]
@@ -90,8 +91,8 @@ def use_onnx_model(onnx_model_path, sam, image):
         "orig_im_size": np.array(image.shape[:2], dtype=np.float32)
     }
 
-    masks, _, low_res_logits = ort_session.run(None, ort_inputs)
-    masks = masks > predictor.model.mask_threshold
+    masks, _, low_res_logits = ort_session.run(None, ort_input)
+    # masks = masks > predictor.model.mask_threshold
     return masks
 
 
@@ -100,16 +101,23 @@ if __name__ == "__main__":
     model_type = "vit_h"
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
 
-    # Export the onnx path
+    # # Export the onnx path
     onnx_model_path = "/vol/bitbucket/ras19/se-model-checkpoints/sam_onnx_model.onnx"
-    export_onnx_model(onnx_model_path, sam)
+    # export_onnx_model(onnx_model_path, sam)
     
-    # Use the onnx model on the image loaded
+    # # Use the onnx model on the image loaded
     image_loc = "single_img_experimentation/eg_ww_img/env_step0.png"
     image = load_img_and_convert_to_three_channels(image_loc)
     masks = use_onnx_model(onnx_model_path, sam, image)
 
-    # Save the masks in a pickle object for later use
+    # # Save the masks in a pickle object for later use
     masks_pkl_path = "single_img_experimentation/eg_ww_img/onnx_masks.pkl"
     with open(masks_pkl_path, "wb") as f:
         pickle.dump(masks, f)
+
+    # with open(masks_pkl_path, "rb") as f:
+    #     masks = pickle.load(f)
+    
+    # print(masks)
+    # img_with_masks_path = "single_img_experimentation/eg_ww_img/onnx_masks_vit_h.png"
+    # save_image_with_masks(masks, image, img_with_masks_path)
