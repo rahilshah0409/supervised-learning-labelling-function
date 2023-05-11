@@ -97,8 +97,8 @@ if __name__ == "__main__":
     traces_dir = "ww_trace_rand/"
     trace_data_filename = "traces_data.pkl"
     img_base_filename = "env_rand_step"
-    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
-    model_type = "vit_h"
+    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_l_0b3195.pth"
+    model_type = "vit_l"
     masks_for_ep_filename = "masks_2.pkl"
     filtered_masks_for_ep_fname = "filtered_masks_2.pkl"
     unfiltered_masks_for_ep_fname = "unfiltered_masks_2.pkl"
@@ -108,10 +108,10 @@ if __name__ == "__main__":
         trace_data = pickle.load(f)
     num_eps = len(trace_data)
 
-    # masks_for_every_ep = None
-    # masks_for_every_ep, _ = generate_and_save_masks_for_eps(trace_data, traces_dir, sam_checkpoint, model_type, img_base_filename, filtered_masks_for_ep_fname, unfiltered_masks_for_ep_fname)
+    masks_for_every_ep = None
+    masks_for_every_ep, _ = generate_and_save_masks_for_eps(trace_data, traces_dir, sam_checkpoint, model_type, img_base_filename, filtered_masks_for_ep_fname, unfiltered_masks_for_ep_fname)
 
-    # events_for_every_ep = generate_event_labels_from_masks(trace_data, traces_dir, model_type, filtered_masks_for_ep_fname, img_base_filename, events_fname, masks_for_every_ep)
+    events_for_every_ep = generate_event_labels_from_masks(trace_data, traces_dir, model_type, filtered_masks_for_ep_fname, img_base_filename, events_fname, masks_for_every_ep)
 
     for i in range(num_eps):
         trace_sub_dir = traces_dir + "trace_" + str(i) + "/"
@@ -119,10 +119,10 @@ if __name__ == "__main__":
         masks_pkl_filename = "masks.pkl"
         trace_img_dir = trace_sub_dir + "trace_imgs/"
         masks_imgs_dir = results_dir + "masks_imgs_2/" 
-        event_pkl_loc = results_dir + events_fname
-        with open(event_pkl_loc, "rb") as f:
-            events_ep_i= pickle.load(f)
-        # events_ep_i = events_for_every_ep[i]
+        # event_pkl_loc = results_dir + events_fname
+        # with open(event_pkl_loc, "rb") as f:
+        #     events_ep_i= pickle.load(f)
+        events_ep_i = events_for_every_ep[i]
         save_images_with_masks_and_events(results_dir + filtered_masks_for_ep_fname, trace_img_dir, img_base_filename, events_ep_i, masks_imgs_dir)
 
     # for i in range(num_eps):
