@@ -1,26 +1,50 @@
 import sys
+
+from image_segmentation.dataset_labelling_pipeline import generate_and_save_masks_for_eps, generate_event_labels_from_masks
 sys.path.insert(1, "..")
 from image_generation.generate_imgs import run_rand_policy_and_save_traces
 from labelling_function.labelling_model import State2EventNet
 from labelling_function.model_training import eval_model, train_model
 import wandb
 import gym
+import pickle
 
-# TODO: Impelement using functions already implemented in other files
-def generate_dataset(dataset_dir_path, use_velocities):
+def generate_unlabelled_images(use_velocities, train):
+    dataset_dir_path = "../dataset/training/" if train else "../dataset/test/"
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
                    params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 400})
     random_seed = None
     img_base_fname = "step"
     num_episodes = 10
 
-    run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
     # Generate training data without labels (images and metadata)
+    run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
+
+    return dataset_dir_path, img_base_fname
+
+# TODO: Impelement using functions already implemented in other files
+def generate_dataset(use_velocities, train):
+    img_dir_path = "../dataset/training/"
+    img_base_fname = "step"
+    # Following line needs to be done on local machine (due to Python 3.7 conda environment set up)
+    # img_dir_path, img_base_fname = generate_unlabelled_images(use_velocities, train)
 
     # Segment the images with Segment Anything
+    trace_data_filename = "traces_data.pkl"
+    with open(img_dir_path + trace_data_filename, "rb") as f:
+        trace_data = pickle.load(f)
+    
+    # The following lines need to be run on a lab machine
+    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
+    model_type = "vit_h"
+    filtered_masks_pkl_name = "masks.pkl"
+    unfiltered_masks_pkl_name = "unfiltered_masks.pkl"
+    masks_for_every_ep, _ = generate_and_save_masks_for_eps(trace_data, img_dir_path, sam_checkpoint, model_type, img_base_fname, filtered_masks_pkl_name, unfiltered_masks_pkl_name)
 
     # Run algorithm to get the events for each state generated. num_events should be changed here based on empirical analysis on the training data and the labelling done on it
-    return None
+    events_fname = "events.pkl"
+    events_for_every_ep = generate_event_labels_from_masks(trace_data, img_dir_path, model_type, filtered_masks_pkl_name, img_base_fname, events_fname, masks_for_every_ep)
+    return img_dir_path
 
 # This function should analyse the following:
 # How much of each label appears
@@ -31,17 +55,9 @@ def analyse_dataset(dataset):
     print("We are now going to analyse the dataset")
 
 def run_labelling_func_framework():
-    train_data_path = "../dataset/training/"
-    test_data_path = "../dataset/test/"
     # Determines whether or not the balls are frozen
     use_velocities = False
     num_events = 0
-
-    # Generate test data without labels
-
-    # Segment the images with Segment Anything
-
-    # Run algorithm to label dataset
 
     input_size = 52 if use_velocities else 28
     num_layers = 0
@@ -53,8 +69,8 @@ def run_labelling_func_framework():
     labelling_function = State2EventNet(input_size, num_events, num_layers, num_neurons)
 
     # Once made, extract datasets from relevant place
-    generate_dataset(train_data_path, use_velocities=use_velocities)
-    # test_data = generate_dataset(test_data_path, use_velocities=use_velocities)
+    train_data_loc = generate_dataset(use_velocities=use_velocities, train=True)
+    # test_data_loc = generate_dataset(use_velocities=use_velocities, train=False)
     # TODO: Need to check quality of training and test dataset created by specified metrics
     
     # train_model(labelling_function, learning_rate, num_train_epochs, train_data, train_batch_size)

@@ -75,8 +75,8 @@ def get_events_from_masks_in_state(event_vocab, masks, image):
             print("A smaller mask has been found")
             event = list(colour_distribution.keys())[0]
             if (event in event_vocab):
-                # This is hardcoded in the frozen world because the agent (white) is the only ball that is moving. When we remove the frozen ball assumption, I hope that we don't run into the problem of having a mask covering most of one ball but not the other
-                events.add((event, 'white'))
+                # This is hardcoded in the frozen world because the agent (black) is the only ball that is moving. Think of another way to deal with this issue
+                events.add((event, 'black'))
         else:
             print("A bigger mask has been found")
             largest_colour_presences = sorted(colour_distribution, reverse=True)[:2]
