@@ -10,8 +10,8 @@ import sys
 # The two paths below are hardcoded from my local machine and hence will be useless when working on lab machines
 sys.path.insert(1, "/home/rahilshah/Documents/Year4/FYP/image-segmentation-experimentation/image_segmentation")
 sys.path.insert(1, "/home/rahilshah/Documents/Year4/FYP/image-segmentation-experimentation/image_generation")
-sys.path.insert(1, "..")
-from img_utils import load_img_and_convert_to_three_channels, save_image_with_masks, get_colour_freqs
+sys.path.insert(1, "../")
+from image_segmentation.img_utils import load_img_and_convert_to_three_channels, save_image_with_masks, get_colour_freqs
 import statistics
 # from generate_imgs import ball_area
 

@@ -1,10 +1,9 @@
 import sys
-
+sys.path.insert(1, "../")
 from image_segmentation.dataset_labelling_pipeline import generate_and_save_masks_for_eps, generate_event_labels_from_masks
-sys.path.insert(1, "..")
 from image_generation.generate_imgs import run_rand_policy_and_save_traces
-from labelling_function.labelling_model import State2EventNet
-from labelling_function.model_training import eval_model, train_model
+from labelling_model import State2EventNet
+from model_training import eval_model, train_model
 import wandb
 import gym
 import pickle
@@ -28,8 +27,7 @@ def label_dataset(img_dir_path, img_base_fname):
     sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
     filtered_masks_pkl_name = "masks.pkl"
-    unfiltered_masks_pkl_name = "unfiltered_masks.pkl"
-    masks_for_every_ep, _ = generate_and_save_masks_for_eps(trace_data, img_dir_path, sam_checkpoint, model_type, img_base_fname, filtered_masks_pkl_name, unfiltered_masks_pkl_name)
+    masks_for_every_ep = generate_and_save_masks_for_eps(trace_data, img_dir_path, sam_checkpoint, model_type, img_base_fname, filtered_masks_pkl_name)
 
     # Run algorithm to get the events for each state generated. num_events should be changed here based on empirical analysis on the training data and the labelling done on it
     events_fname = "events.pkl"
