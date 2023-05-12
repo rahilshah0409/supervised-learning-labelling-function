@@ -1,8 +1,8 @@
 import sys
 sys.path.insert(1, "..")
 from image_generation.generate_imgs import run_rand_policy_and_save_traces
-from labelling_function.mlp import State2EventNet
-from labelling_function.mlp_training import eval_model, train_model
+from labelling_function.labelling_model import State2EventNet
+from labelling_function.model_training import eval_model, train_model
 import wandb
 import gym
 
