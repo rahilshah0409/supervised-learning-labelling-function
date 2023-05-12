@@ -9,26 +9,16 @@ import wandb
 import gym
 import pickle
 
-def generate_unlabelled_images(use_velocities, train):
-    dataset_dir_path = "../dataset/training/" if train else "../dataset/test/"
+def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
                    params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 400})
     random_seed = None
-    img_base_fname = "step"
     num_episodes = 10
 
     # Generate training data without labels (images and metadata)
     run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
 
-    return dataset_dir_path, img_base_fname
-
-# TODO: Impelement using functions already implemented in other files
-def generate_dataset(use_velocities, train):
-    img_dir_path = "../dataset/training/"
-    img_base_fname = "step"
-    # Following line needs to be done on local machine (due to Python 3.7 conda environment set up)
-    # img_dir_path, img_base_fname = generate_unlabelled_images(use_velocities, train)
-
+def label_dataset(img_dir_path, img_base_fname):
     # Segment the images with Segment Anything
     trace_data_filename = "traces_data.pkl"
     with open(img_dir_path + trace_data_filename, "rb") as f:
@@ -46,6 +36,13 @@ def generate_dataset(use_velocities, train):
     events_for_every_ep = generate_event_labels_from_masks(trace_data, img_dir_path, model_type, filtered_masks_pkl_name, img_base_fname, events_fname, masks_for_every_ep)
     return img_dir_path
 
+# TODO: Impelement using functions already implemented in other files
+def generate_dataset(use_velocities, train):
+    img_dir_path = "../dataset/training/"
+    img_base_fname = "step"
+    # Following line needs to be done on local machine (due to Python 3.7 conda environment set up)
+    # img_dir_path, img_base_fname = generate_unlabelled_images(use_velocities, train
+
 # This function should analyse the following:
 # How much of each label appears
 # The size
@@ -59,6 +56,21 @@ def run_labelling_func_framework():
     use_velocities = False
     num_events = 0
 
+    # Generate training data
+    train_data_dir = "../dataset/training/"
+    img_base_fname = "step"
+    test_data_dir = "../dataset/test/"
+    test_img_base_fname = "test_step"
+
+    # generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
+    label_dataset(train_data_dir, img_base_fname)
+
+    # Generate test data
+    # generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)
+    # label_dataset(test_data_dir, test_img_base_fname)
+
+    # TODO: Need to check quality of training and test dataset created by specified metrics
+
     input_size = 52 if use_velocities else 28
     num_layers = 0
     num_neurons = 2
@@ -67,11 +79,6 @@ def run_labelling_func_framework():
     train_batch_size = 32
     test_batch_size = train_batch_size
     labelling_function = State2EventNet(input_size, num_events, num_layers, num_neurons)
-
-    # Once made, extract datasets from relevant place
-    train_data_loc = generate_dataset(use_velocities=use_velocities, train=True)
-    # test_data_loc = generate_dataset(use_velocities=use_velocities, train=False)
-    # TODO: Need to check quality of training and test dataset created by specified metrics
     
     # train_model(labelling_function, learning_rate, num_train_epochs, train_data, train_batch_size)
 
