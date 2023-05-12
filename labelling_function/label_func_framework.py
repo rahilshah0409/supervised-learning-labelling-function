@@ -10,6 +10,14 @@ def generate_dataset(dataset_dir_path):
     # Run algorithm to get the events for each state generated. num_events should be changed here based on empirical analysis on the training data and the labelling done on it
     return None
 
+# This function should analyse the following:
+# How much of each label appears
+# The size
+# Accuracy of labelling- how does accuracy of labelling translate when we have potentially irrelevant events- would we calculate precision, recall and F1 score?
+# Anything else?
+def analyse_dataset(dataset):
+    print("We are now going to analyse the dataset")
+
 def run_labelling_func_framework():
     train_data_path = ""
     test_data_path = ""
@@ -36,7 +44,6 @@ def run_labelling_func_framework():
     train_data = generate_dataset(train_data_path)
     test_data = generate_dataset(test_data_path)
     # TODO: Need to check quality of training and test dataset created by specified metrics
-
     
     train_model(labelling_function, learning_rate, num_train_epochs, train_data, train_batch_size)
 
