@@ -36,12 +36,11 @@ def run_rand_policy_and_save_traces(env, num_episodes, dir_path, img_base_filena
 
         events_observed = [set()]
         done, terminated, t = False, False, 0
-
         while not (done or terminated):
             action = choose_action(random_seed)
             if random_seed is not None:
                 random_seed += 2
-            next_state, _, done, observations = env.step(action)
+            next_state, _, done, observations = env.step(action, t)
             t += 1
             env.save_and_render(sub_dir_path, img_base_filename, t)
             state = next_state

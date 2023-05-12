@@ -1,10 +1,20 @@
+import sys
+sys.path.insert(1, "..")
+from image_generation.generate_imgs import run_rand_policy_and_save_traces
 from labelling_function.mlp import State2EventNet
 from labelling_function.mlp_training import eval_model, train_model
 import wandb
-import random
+import gym
 
 # TODO: Impelement using functions already implemented in other files
 def generate_dataset(dataset_dir_path, use_velocities):
+    env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
+                   params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 400})
+    random_seed = None
+    img_base_fname = "step"
+    num_episodes = 10
+
+    run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
     # Generate training data without labels (images and metadata)
 
     # Segment the images with Segment Anything
@@ -21,8 +31,8 @@ def analyse_dataset(dataset):
     print("We are now going to analyse the dataset")
 
 def run_labelling_func_framework():
-    train_data_path = ""
-    test_data_path = ""
+    train_data_path = "../dataset/training/"
+    test_data_path = "../dataset/test/"
     # Determines whether or not the balls are frozen
     use_velocities = False
     num_events = 0
@@ -43,13 +53,13 @@ def run_labelling_func_framework():
     labelling_function = State2EventNet(input_size, num_events, num_layers, num_neurons)
 
     # Once made, extract datasets from relevant place
-    train_data = generate_dataset(train_data_path, use_velocities=use_velocities)
-    test_data = generate_dataset(test_data_path)
+    generate_dataset(train_data_path, use_velocities=use_velocities)
+    # test_data = generate_dataset(test_data_path, use_velocities=use_velocities)
     # TODO: Need to check quality of training and test dataset created by specified metrics
     
-    train_model(labelling_function, learning_rate, num_train_epochs, train_data, train_batch_size)
+    # train_model(labelling_function, learning_rate, num_train_epochs, train_data, train_batch_size)
 
-    eval_model(labelling_function, test_data, test_batch_size)
+    # eval_model(labelling_function, test_data, test_batch_size)
 
     return labelling_function
 
