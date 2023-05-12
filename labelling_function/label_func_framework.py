@@ -2,7 +2,7 @@ from labelling_function.mlp import State2EventNet
 from labelling_function.mlp_training import eval_model, train_model
 
 # TODO: Impelement using functions already implemented in other files
-def generate_dataset(dataset_dir_path):
+def generate_dataset(dataset_dir_path, use_velocities):
     # Generate training data without labels (images and metadata)
 
     # Segment the images with Segment Anything
@@ -41,7 +41,7 @@ def run_labelling_func_framework():
     labelling_function = State2EventNet(input_size, num_events, num_layers, num_neurons)
 
     # Once made, extract datasets from relevant place
-    train_data = generate_dataset(train_data_path)
+    train_data = generate_dataset(train_data_path, use_velocities=use_velocities)
     test_data = generate_dataset(test_data_path)
     # TODO: Need to check quality of training and test dataset created by specified metrics
     
