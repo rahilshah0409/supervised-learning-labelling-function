@@ -84,8 +84,8 @@ if __name__ == "__main__":
     use_velocities = False
     # Initially have coloured balls frozen
     env = gym.make(
-        "gym_subgoal_automata:WaterWorldRedGreen-v0",
-        params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0},
+        "gym_subgoal_automata:WaterWorldDummy-v0",
+        params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 200},
     )
     dir_path = "../image_segmentation/ww_trace_black/"
     img_base_filename = "env_step"
@@ -95,8 +95,8 @@ if __name__ == "__main__":
     # with open(dir_path + "traces_data.pkl", "rb") as f:
     #     trace_data = pickle.load(f)
     # print(trace_data[0]['length'])
-    save_traces_from_manual_play(env, num_episodes, dir_path, img_base_filename)
+    # save_traces_from_manual_play(env, num_episodes, dir_path, img_base_filename)
     # img_dir_path = "../image_segmentation/ww_trace/"
     # env.play(img_dir_path)
     # ball_area = env.get_ball_area()
-    # env.play()
+    env.play()

@@ -1,5 +1,7 @@
 from labelling_function.mlp import State2EventNet
 from labelling_function.mlp_training import eval_model, train_model
+import wandb
+import random
 
 # TODO: Impelement using functions already implemented in other files
 def generate_dataset(dataset_dir_path, use_velocities):
@@ -52,4 +54,14 @@ def run_labelling_func_framework():
     return labelling_function
 
 if __name__ == "__main__":
+    # Sets up weights and biases for monitoring progress. Can I also use it for showing analysis of dataset
+    wandb.init(
+        project="labelling-function-learning",
+        config={
+            "learning_rate": 0.01,
+            "epochs": 50,
+            "num_layers": 6,
+            "num_neurons": 64
+        }
+    )
     labelling_function = run_labelling_func_framework()

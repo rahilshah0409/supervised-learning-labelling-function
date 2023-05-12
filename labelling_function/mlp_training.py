@@ -3,6 +3,7 @@ import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import wandb
 
 def train_model(model, lr, num_epochs, train_data, batch_size):
     bceloss = nn.BCELoss().cuda() if torch.cuda.is_available() else nn.BCELoss()
@@ -32,6 +33,7 @@ def train_model(model, lr, num_epochs, train_data, batch_size):
 
         avg_loss = round(total_train_loss / num_batches, 5)
         epoch_losses.append(avg_loss)
+        wandb.log({"epoch": epoch, "loss": avg_loss})
 
         # Maybe get the loss when tested against unseen test data. Need to make sure that the test data is truly unseen
 
