@@ -8,7 +8,7 @@ def generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model
     num_eps = len(trace_data)
     masks_for_every_ep = []
     # unfiltered_masks_for_every_ep = []
-    for ep in range(num_eps):
+    for ep in range(2, num_eps):
         print("EPISODE {}: STARTING MASK GENERATION".format(ep))
         sub_dir = trace_dir + "trace_" + str(ep) + "/"
         ep_len = trace_data[ep]["length"]

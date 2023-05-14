@@ -24,7 +24,7 @@ def label_dataset(img_dir_path, img_base_fname):
         trace_data = pickle.load(f)
     
     # The following lines need to be run on a lab machine
-    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
+    sam_checkpoint = "/vol/bitbucket/ras19/fyp/se-model-checkpoints/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
     filtered_masks_pkl_name = "masks.pkl"
     masks_for_every_ep = generate_and_save_masks_for_eps(trace_data, img_dir_path, sam_checkpoint, model_type, img_base_fname, filtered_masks_pkl_name)
@@ -33,13 +33,6 @@ def label_dataset(img_dir_path, img_base_fname):
     events_fname = "events.pkl"
     events_for_every_ep = generate_event_labels_from_masks(trace_data, img_dir_path, model_type, filtered_masks_pkl_name, img_base_fname, events_fname, masks_for_every_ep)
     return img_dir_path
-
-# TODO: Impelement using functions already implemented in other files
-def generate_dataset(use_velocities, train):
-    img_dir_path = "../dataset/training/"
-    img_base_fname = "step"
-    # Following line needs to be done on local machine (due to Python 3.7 conda environment set up)
-    # img_dir_path, img_base_fname = generate_unlabelled_images(use_velocities, train
 
 # This function should analyse the following:
 # How much of each label appears
@@ -55,9 +48,9 @@ def run_labelling_func_framework():
     num_events = 0
 
     # Generate training data
-    train_data_dir = "../dataset/training/"
+    train_data_dir = "/vol/bitbucket/ras19/fyp/dataset/training/"
     img_base_fname = "step"
-    test_data_dir = "../dataset/test/"
+    test_data_dir = "/vol/bitbucket/ras19/fyp/dataset/test/"
     test_img_base_fname = "test_step"
 
     # generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
