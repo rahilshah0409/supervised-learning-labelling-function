@@ -24,7 +24,7 @@ def generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model
         masks_for_every_ep.append(masks_for_ep)
         # unfiltered_masks_for_every_ep.append(unfiltered_masks_for_ep)
         print("EPISODE {}: FINISHED MASK GENERATION. SAVING NOW.".format(ep))
-        results_dir = sub_dir + model_type + "_results/"
+        results_dir = sub_dir
         filtered_masks_path = results_dir + filtered_masks_fname
         with open(filtered_masks_path, "wb") as f:
             pickle.dump(masks_for_ep, f)
@@ -56,7 +56,7 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fo
         events_for_ep = [set()]
         sub_dir = trace_dir + "trace_" + str(ep) + "/"
         ep_len = trace_data[ep]["length"]
-        results_dir = sub_dir + model_type + "_results/" 
+        results_dir = sub_dir
         # Get the masks (either masks for all episodes are given in the arguments or they need to be loaded from the pickle object)
         masks_for_ep = None
         if masks_for_every_ep is None:
