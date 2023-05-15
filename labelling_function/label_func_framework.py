@@ -10,9 +10,9 @@ import pickle
 
 def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
-                   params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 400})
+                   params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 300})
     random_seed = None
-    num_episodes = 10
+    num_episodes = 5
 
     # Generate training data without labels (images and metadata)
     run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
@@ -27,12 +27,12 @@ def label_dataset(img_dir_path, img_base_fname):
     sam_checkpoint = "/vol/bitbucket/ras19/fyp/se-model-checkpoints/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
     filtered_masks_pkl_name = "masks.pkl"
-    masks_for_every_ep = generate_and_save_masks_for_eps(trace_data, img_dir_path, sam_checkpoint, model_type, img_base_fname, filtered_masks_pkl_name)
+    # masks_for_every_ep = generate_and_save_masks_for_eps(trace_data, img_dir_path, sam_checkpoint, model_type, img_base_fname, filtered_masks_pkl_name)
 
     # Run algorithm to get the events for each state generated. num_events should be changed here based on empirical analysis on the training data and the labelling done on it
     events_fname = "events.pkl"
-    events_for_every_ep = generate_event_labels_from_masks(trace_data, img_dir_path, model_type, filtered_masks_pkl_name, img_base_fname, events_fname, masks_for_every_ep)
-    return img_dir_path
+    events_for_every_ep, events_observed = generate_event_labels_from_masks(trace_data, img_dir_path, model_type, filtered_masks_pkl_name, img_base_fname, events_fname)
+    return img_dir_path, events_observed
 
 # This function should analyse the following:
 # How much of each label appears
@@ -48,13 +48,13 @@ def run_labelling_func_framework():
     num_events = 0
 
     # Generate training data
-    train_data_dir = "/vol/bitbucket/ras19/fyp/dataset/training/"
+    train_data_dir = "/vol/bitbucket/ras19/fyp/dataset2/training/"
     img_base_fname = "step"
-    test_data_dir = "/vol/bitbucket/ras19/fyp/dataset/test/"
+    test_data_dir = "/vol/bitbucket/ras19/fyp/dataset2/test/"
     test_img_base_fname = "test_step"
 
-    # generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
-    label_dataset(train_data_dir, img_base_fname)
+    generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
+    # label_dataset(train_data_dir, img_base_fname)
 
     # Generate test data
     # generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)

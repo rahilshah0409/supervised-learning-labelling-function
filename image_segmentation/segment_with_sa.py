@@ -1,3 +1,4 @@
+import string
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
 import math
 import webcolors
@@ -17,6 +18,27 @@ import statistics
 
 ball_rad = 15 # default radius, be wary if this changes
 ball_area = math.pi * (ball_rad ** 2)
+
+class EventLabel(object):
+    def __init__(self, object1, object2):
+        self.object1 = object1
+        self.object2 = object2
+
+    def __eq__(self, other_object):
+        return self.__class__ == other_object.__class__ and (other_object == (self.object1, self.object2) or other_object == (self.object2, self.object1))
+    
+    def __ne__(self, other_object):
+        return not self == other_object
+    
+    def __hash__(self):
+        return hash(self.get_pair())
+    
+    def get_pair(self):
+        return (self.object1, self.object2)
+    
+    def convert_to_vector(self):
+        # TODO: implement
+        return self
 
 def print_mask_info(masks_pkl_path, image):
     print("INSPECTING THE MASKS FOUND IN " + masks_pkl_path)
@@ -76,12 +98,12 @@ def get_events_from_masks_in_state(event_vocab, masks, image):
             event = list(colour_distribution.keys())[0]
             if (event in event_vocab):
                 # This is hardcoded in the frozen world because the agent (black) is the only ball that is moving. Think of another way to deal with this issue
-                events.add((event, 'black'))
+                events.add(EventLabel(event, 'black'))
         else:
             print("A bigger mask has been found")
             largest_colour_presences = sorted(colour_distribution, reverse=True)[:2]
             if largest_colour_presences[0] in event_vocab and largest_colour_presences[1] in event_vocab:
-                events.add((largest_colour_presences[0], largest_colour_presences[1]))
+                events.add(EventLabel(largest_colour_presences[0], largest_colour_presences[1]))
     return events
 
 # Right now, I get the most common mask area because most of the masks will be just one ball. When multiple balls are moving, this may need to change by injecting the knowledge of what we know the ball area to be (which you would have to get when you get the event vocab because the pixel area is not perfect)

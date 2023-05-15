@@ -50,6 +50,8 @@ def save_images_with_masks_and_events(masks_pkl_loc, trace_imgs_dir, trace_img_b
 def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_for_ep_fname, img_base_fname, events_fname, masks_for_every_ep=None):
     num_eps = len(trace_data)
     events_for_every_ep = []
+    # This variable keeps track of every event observed when generating this dataset, hoping that we get full coverage when we generate the dataset
+    events_observed = set()
     for ep in range(num_eps):
         print("Episode {} in progress".format(ep + 1))
         # Assuming that no event is observed in the initial state. This assumption should be dropped
@@ -78,13 +80,14 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fo
             # Get the events at every time step of the episode in question and record this
             events = get_events_from_masks_in_state(event_vocab, masks_for_ep[step], image)
             print("Events gathered for step {}".format(step))
+            events_observed.update(events)
             events_for_ep.append(events)
         # Save all of the events discovered for this episode
         event_pkl_loc = results_dir + events_fname  
         with open(event_pkl_loc, "wb") as f:
             pickle.dump(events_for_ep, f)
         events_for_every_ep.append(events_for_ep)
-    return events_for_every_ep
+    return events_for_every_ep, events_observed
     
 def inspect_events(events_pkl_loc, model_type):
     print("Events observed for the results from " + model_type)
@@ -111,7 +114,7 @@ if __name__ == "__main__":
     masks_for_every_ep = None
     # masks_for_every_ep, _ = generate_and_save_masks_for_eps(trace_data, traces_dir, sam_checkpoint, model_type, img_base_filename, filtered_masks_for_ep_fname, unfiltered_masks_for_ep_fname)
 
-    events_for_every_ep = generate_event_labels_from_masks(trace_data, traces_dir, model_type, filtered_masks_for_ep_fname, img_base_filename, events_fname)
+    events_for_every_ep, events_observed = generate_event_labels_from_masks(trace_data, traces_dir, model_type, filtered_masks_for_ep_fname, img_base_filename, events_fname)
 
     for i in range(num_eps):
         trace_sub_dir = traces_dir + "trace_" + str(i) + "/"
