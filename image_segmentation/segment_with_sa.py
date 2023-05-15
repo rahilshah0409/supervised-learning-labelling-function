@@ -1,5 +1,5 @@
 import string
-from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
+# from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
 import math
 import webcolors
 import cv2

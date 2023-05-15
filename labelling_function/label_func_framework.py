@@ -10,7 +10,7 @@ import pickle
 
 def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
-                   params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 300})
+                   params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 200})
     random_seed = None
     num_episodes = 5
 
@@ -48,16 +48,16 @@ def run_labelling_func_framework():
     num_events = 0
 
     # Generate training data
-    train_data_dir = "/vol/bitbucket/ras19/fyp/dataset2/training/"
+    train_data_dir = "../dataset2/training/"
     img_base_fname = "step"
-    test_data_dir = "/vol/bitbucket/ras19/fyp/dataset2/test/"
+    test_data_dir = "../dataset2/test/"
     test_img_base_fname = "test_step"
 
-    generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
+    # generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
     # label_dataset(train_data_dir, img_base_fname)
 
     # Generate test data
-    # generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)
+    generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)
     # label_dataset(test_data_dir, test_img_base_fname)
 
     # TODO: Need to check quality of training and test dataset created by specified metrics
