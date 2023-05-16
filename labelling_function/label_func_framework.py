@@ -54,9 +54,9 @@ def run_labelling_func_framework():
     test_img_base_fname = "test_step"
 
     # generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
-    train_set_dir_path, events_captured = label_dataset(train_data_dir, img_base_fname)
-    with open("events_captured_2.pkl", "wb") as f:
-        pickle.dump(events_captured, f)
+    # train_set_dir_path, events_captured = label_dataset(train_data_dir, img_base_fname)
+    # with open("events_captured_2.pkl", "wb") as f:
+    #     pickle.dump(events_captured, f)
 
     # Generate test data
     # generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)
@@ -81,13 +81,13 @@ def run_labelling_func_framework():
 
 if __name__ == "__main__":
     # Sets up weights and biases for monitoring progress. Can I also use it for showing analysis of dataset
-    wandb.init(
-        project="labelling-function-learning",
-        config={
-            "learning_rate": 0.01,
-            "epochs": 50,
-            "num_layers": 6,
-            "num_neurons": 64
-        }
-    )
+    # wandb.init(
+    #     project="labelling-function-learning",
+    #     config={
+    #         "learning_rate": 0.01,
+    #         "epochs": 50,
+    #         "num_layers": 6,
+    #         "num_neurons": 64
+    #     }
+    # )
     labelling_function = run_labelling_func_framework()

@@ -23,7 +23,7 @@ def generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model
             results_dir = sub_dir
             filtered_masks_path = results_dir + filtered_masks_fname_base + str(step) + ".pkl"
             with open(filtered_masks_path, "wb") as f:
-                pickle.dump(masks_for_ep, f)
+                pickle.dump(masks, f)
             masks_for_ep.append(masks)
             # unfiltered_masks_for_ep.append(unfiltered_masks)
         masks_for_every_ep.append(masks_for_ep)
@@ -92,7 +92,7 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fn
                 masks_i = masks_for_ep[step]
             else:
                 masks_i_loc = sub_dir + masks_fname_base + str(step) + ".pkl"
-                with open(first_mask_loc, "rb") as f:
+                with open(masks_i_loc, "rb") as f:
                     masks_i = pickle.load(f)
             events = get_events_from_masks_in_state(event_vocab, masks_i, image)
             print("Events gathered for step {}".format(step))

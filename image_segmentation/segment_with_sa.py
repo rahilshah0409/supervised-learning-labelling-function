@@ -33,6 +33,12 @@ class EventLabel(object):
     def __hash__(self):
         return hash(self.get_pair())
     
+    def __str__(self):
+        return "(" + self.object1 + "," + self.object2 + ")"
+    
+    def __repr__(self):
+        return "(" + self.object1 + "," + self.object2 + ")"
+    
     def get_pair(self):
         return (self.object1, self.object2)
     
@@ -58,7 +64,6 @@ def create_event_vocab(masks, image):
     centres = []
     vocab = set()
     # This is hardcoded to overcome an obstacle where the agent doesn't get picked up. This hard coding should be removed with a better solution- either we make the ball opaque or figure out a way to get the agent in somehow
-    vocab.add('white')
     for mask in masks:
         # Looking at just the centre is probably flawed, not in the waterworld where the objects are clean but in other environments where the objects are not so exact
         [x, y, width, height] = mask['bbox']
