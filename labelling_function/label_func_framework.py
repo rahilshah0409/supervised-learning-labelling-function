@@ -43,8 +43,25 @@ def label_dataset(img_dir_path, img_base_fname):
 # The size
 # Accuracy of labelling- how does accuracy of labelling translate when we have potentially irrelevant events- would we calculate precision, recall and F1 score?
 # Anything else?
-def analyse_dataset(dataset):
-    print("We are now going to analyse the dataset")
+# The dataset passed in as an argument in this function has datapoints in the form of tuples 
+def analyse_dataset(dataset, events_captured):
+    print("The size of the dataset is {}".format(len(dataset)))
+    label_distribution = _get_distribution_of_labels(dataset, events_captured)
+    print("The label distribution")
+    print(label_distribution)
+
+def _get_distribution_of_labels(dataset, events_captured):
+    potential_events_list = list(events_captured)
+    distribution = dict.fromkeys(potential_events_list, 0)
+    distribution['no_event'] = 0
+    for datapoint in dataset:
+        (_, label) = datapoint
+        if not label:
+            distribution['no_event'] = distribution['no_event'] + 1
+        else:
+            for event in label:
+                distribution[event] = distribution[event] + 1
+    return distribution
 
 def get_dataset_for_model_train_and_eval(data_dir_path):
     with open(data_dir_path + "traces_data.pkl", "rb") as f:
@@ -102,35 +119,47 @@ def run_labelling_func_framework():
     
     # Create the model (i.e. learnt labelling function)
     input_size = 52 if use_velocities else 28
-    output_size = get_output_size(use_velocities)
+    output_size = 21 if use_velocities else 6
     num_layers = 6
     num_neurons = 64
     labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
     
     # Get the training and test data from what has (already) been generated
     train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir)
+
+    # print("EVALUATING THE TRAINING DATASET")
+    # analyse_dataset(train_data, events_captured)
+    # print("EVALUATING THE TEST DATASET")
+    # analyse_dataset(test_data, events_captured)
     
     learning_rate = 0.01
     num_train_epochs = 500
     train_batch_size = 32
     test_batch_size = train_batch_size
 
-    labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
+    # Initialise weights and biases here
+    wandb.init(
+        project="labelling-function-learning",
+        config={
+            "learning_rate": learning_rate,
+            "epochs": num_train_epochs,
+            "num_layers": num_layers,
+            "num_neurons": num_neurons 
+        }
+    )
 
-    labelling_fn_loc = "trained_model/label_fun.pth"
-    torch.save(labelling_fn.state_dict(), labelling_fn_loc)
+    # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
+    print("Evaluating the initial model (without any training)")
+    eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
+
+    # print("Evaluating the model after being trained on the training dataset")
+    # labelling_fn_loc = "trained_model/label_fun.pth"
+    # labelling_fn.load_state_dict(torch.load(labelling_fn_loc))
+    # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
+    # torch.save(labelling_fn.state_dict(), labelling_fn_loc)
 
     return labelling_fn
 
 if __name__ == "__main__":
     # Sets up weights and biases for monitoring progress. Can I also use it for showing analysis of dataset
-    wandb.init(
-        project="labelling-function-learning",
-        config={
-            "learning_rate": 0.01,
-            "epochs": 50,
-            "num_layers": 6,
-            "num_neurons": 64
-        }
-    )
     labelling_function = run_labelling_func_framework()

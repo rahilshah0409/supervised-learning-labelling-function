@@ -17,7 +17,6 @@ class State2EventNet(nn.Module):
                 modules.append(nn.Linear(num_neurons, num_neurons))
                 modules.append(nn.ReLU())
             modules.append(nn.Linear(num_neurons, output_size))
-            modules.append(nn.Sigmoid())
         return modules
 
     def forward(self, input):
