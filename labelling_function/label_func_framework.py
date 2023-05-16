@@ -10,6 +10,7 @@ import pickle
 import numpy as np
 import random
 import math
+import torch
 
 def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
@@ -30,11 +31,11 @@ def label_dataset(img_dir_path, img_base_fname):
     sam_checkpoint = "/vol/bitbucket/ras19/fyp/se-model-checkpoints/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
     filtered_masks_pkl_name_base = "masks"
-    masks_for_every_ep = generate_and_save_masks_for_eps(trace_data, img_dir_path, sam_checkpoint, model_type, img_base_fname, filtered_masks_pkl_name_base)
+    # masks_for_every_ep = generate_and_save_masks_for_eps(trace_data, img_dir_path, sam_checkpoint, model_type, img_base_fname, filtered_masks_pkl_name_base)
 
     # Run algorithm to get the events for each state generated. num_events should be changed here based on empirical analysis on the training data and the labelling done on it
-    events_fname = "events.pkl"
-    events_for_every_ep, events_observed = generate_event_labels_from_masks(trace_data, img_dir_path, model_type, filtered_masks_pkl_name_base, img_base_fname, events_fname, masks_for_every_ep)
+    events_fname = "events_2.pkl"
+    events_for_every_ep, events_observed = generate_event_labels_from_masks(trace_data, img_dir_path, model_type, filtered_masks_pkl_name_base, img_base_fname, events_fname)
     return img_dir_path, events_observed
 
 # This function should analyse the following:
@@ -48,29 +49,36 @@ def analyse_dataset(dataset):
 def get_dataset_for_model_train_and_eval(data_dir_path):
     with open(data_dir_path + "traces_data.pkl", "rb") as f:
         traces_data = pickle.load(f)
-    state_list = list(map(lambda td: td['vectors']), traces_data)
+    state_list = list(map(lambda td: td['vectors'], traces_data))
     state_list_conc = np.concatenate(state_list)
     label_list = []
     num_eps = len(traces_data)
     for ep in range(num_eps):
         sub_dir_path = data_dir_path + "trace_" + str(ep) + "/"
-        with open(sub_dir_path + "events.pkl", "rb") as f:
+        with open(sub_dir_path + "events_2.pkl", "rb") as f:
             events = pickle.load(f)
         label_list.append(events)
     label_list_conc = np.concatenate(label_list)
-    dataset = zip(state_list_conc, label_list_conc)
-    dataset = random.shuffle(dataset)
+    dataset = list(zip(state_list_conc, label_list_conc))
+    random.shuffle(dataset)
+    # print("Size of dataset: {}".format(len(dataset)))
+    # print("First dataset point: " + str(dataset[0]))
     # This solution is while we have one dataset that we are splitting
     data_size = len(dataset)
     cut_off = math.floor((2 * data_size) / 3)
     train_data = dataset[:cut_off]
     test_data = dataset[cut_off:]
+    # print("Size of training data: {}".format(len(train_data)))
+    # print("Size of test data: {}".format(len(test_data)))
     return train_data, test_data
+
+def get_output_size(dynamic_balls):
+    # 21 is obtained from n * (n - 1) / 2 where n is 7 (7 balls)
+    return 6 if not dynamic_balls else 21
 
 def run_labelling_func_framework():
     # Determines whether or not the balls are frozen
     use_velocities = False
-    num_events = 0
 
     # Generate training data
     train_data_dir = "/vol/bitbucket/ras19/fyp/dataset2/training/"
@@ -80,7 +88,7 @@ def run_labelling_func_framework():
 
     # generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
     # train_set_dir_path, events_captured = label_dataset(train_data_dir, img_base_fname)
-    # with open("events_captured_2.pkl", "wb") as f:
+    # with open("events_captured_3.pkl", "wb") as f:
     #     pickle.dump(events_captured, f)
 
     # Generate test data
@@ -89,31 +97,40 @@ def run_labelling_func_framework():
 
     # TODO: Need to check quality of training and test dataset created by specified metrics
 
+    with open("events_captured_3.pkl", "rb") as f:
+        events_captured = pickle.load(f)
+    
+    # Create the model (i.e. learnt labelling function)
     input_size = 52 if use_velocities else 28
-    num_layers = 0
-    num_neurons = 2
+    output_size = get_output_size(use_velocities)
+    num_layers = 6
+    num_neurons = 64
+    labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
+    
+    # Get the training and test data from what has (already) been generated
+    train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir)
+    
     learning_rate = 0.01
     num_train_epochs = 500
     train_batch_size = 32
     test_batch_size = train_batch_size
-    labelling_function = State2EventNet(input_size, num_events, num_layers, num_neurons)
-    
-    train_data = get_dataset_for_model_train_and_eval(train_data_dir)
-    # train_model(labelling_function, learning_rate, num_train_epochs, train_data, train_batch_size)
 
-    # eval_model(labelling_function, test_data, test_batch_size)
+    labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
 
-    return labelling_function
+    labelling_fn_loc = "trained_model/label_fun.pth"
+    torch.save(labelling_fn.state_dict(), labelling_fn_loc)
+
+    return labelling_fn
 
 if __name__ == "__main__":
     # Sets up weights and biases for monitoring progress. Can I also use it for showing analysis of dataset
-    # wandb.init(
-    #     project="labelling-function-learning",
-    #     config={
-    #         "learning_rate": 0.01,
-    #         "epochs": 50,
-    #         "num_layers": 6,
-    #         "num_neurons": 64
-    #     }
-    # )
+    wandb.init(
+        project="labelling-function-learning",
+        config={
+            "learning_rate": 0.01,
+            "epochs": 50,
+            "num_layers": 6,
+            "num_neurons": 64
+        }
+    )
     labelling_function = run_labelling_func_framework()

@@ -100,12 +100,21 @@ def get_events_from_masks_in_state(event_vocab, masks, image):
             event = list(colour_distribution.keys())[0]
             if (event in event_vocab):
                 # This is hardcoded in the frozen world because the agent (black) is the only ball that is moving. Think of another way to deal with this issue
-                events.add(EventLabel(event, 'black'))
+                events = add_pair_to_events(events, (event, 'black'))
+                # events.add(EventLabel(event, 'black'))
         else:
             print("A bigger mask has been found")
             largest_colour_presences = sorted(colour_distribution, reverse=True)[:2]
             if largest_colour_presences[0] in event_vocab and largest_colour_presences[1] in event_vocab:
-                events.add(EventLabel(largest_colour_presences[0], largest_colour_presences[1]))
+                events = add_pair_to_events(events, (largest_colour_presences[0], largest_colour_presences[1]))
+                # events.add(EventLabel(largest_colour_presences[0], largest_colour_presences[1]))
+    return events
+
+def add_pair_to_events(events, e_pair):
+    pair = e_pair
+    if e_pair[0] > e_pair[1]:
+        pair = (e_pair[1], e_pair[0])
+    events.add(pair)
     return events
 
 # Right now, I get the most common mask area because most of the masks will be just one ball. When multiple balls are moving, this may need to change by injecting the knowledge of what we know the ball area to be (which you would have to get when you get the event vocab because the pixel area is not perfect)
