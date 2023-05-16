@@ -3,9 +3,10 @@ import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
 import wandb
 
-def train_model(model, lr, num_epochs, train_data, batch_size):
+def train_model(model, lr, num_epochs, train_data, batch_size, output_vec_size, events_captured):
     bceloss = nn.BCELoss().cuda() if torch.cuda.is_available() else nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0)
 
@@ -20,7 +21,7 @@ def train_model(model, lr, num_epochs, train_data, batch_size):
         for bi in range(num_batches):
             batch = train_data[(bi * batch_size) : (bi * batch_size) + batch_size]
             batch_input, batch_target = zip(*batch)
-            batch_target = convert_events_to_output_vectors(batch_target)
+            batch_target = convert_events_to_output_vectors(batch_target, output_vec_size, events_captured)
             batch_output = model.forward(batch_input)
 
             optimizer.zero_grad()
@@ -41,7 +42,7 @@ def train_model(model, lr, num_epochs, train_data, batch_size):
     
     # TODO: plot results of training across epochs here
 
-def eval_model(model, test_data, batch_size):
+def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
     model.eval()
     num_batches = math.ceil(len(test_data) / batch_size)
     total_loss = 0
@@ -50,7 +51,7 @@ def eval_model(model, test_data, batch_size):
             batch = test_data[(bi * batch_size) : (bi * batch_size) + batch_size]
 
             batch_input, batch_target = zip(*batch)
-            batch_target = convert_events_to_output_vectors(batch_target)
+            batch_target = convert_events_to_output_vectors(batch_target, output_vec_size, events_captured)
 
             if torch.cuda.is_available():
                 batch_input, batch_target = batch_input.cuda(), batch_target.cuda()
@@ -65,5 +66,14 @@ def eval_model(model, test_data, batch_size):
     return total_loss / num_batches
 
 # TODO: Implement this function
-def convert_events_to_output_vectors(events_list):
-    return []
+def convert_events_to_output_vectors(events_list, output_vec_size, events_captured):
+    vectors_list = []
+    events_captured_list = sorted(list(events_captured))
+    for i in range(len(events_list)):
+        events = events_list[i]
+        output_vector = np.zeros(output_vec_size)
+        for event in events:
+            element_i = 0 # It won't actually be 0 but find a way to do this in a sensible way
+            vectors_list[element_i] = 1
+        vectors_list.append(output_vector)
+    return vectors_list

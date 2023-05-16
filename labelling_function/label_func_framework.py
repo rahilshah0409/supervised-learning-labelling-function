@@ -7,6 +7,9 @@ from model_training import eval_model, train_model
 import wandb
 import gym
 import pickle
+import numpy as np
+import random
+import math
 
 def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
@@ -42,6 +45,28 @@ def label_dataset(img_dir_path, img_base_fname):
 def analyse_dataset(dataset):
     print("We are now going to analyse the dataset")
 
+def get_dataset_for_model_train_and_eval(data_dir_path):
+    with open(data_dir_path + "traces_data.pkl", "rb") as f:
+        traces_data = pickle.load(f)
+    state_list = list(map(lambda td: td['vectors']), traces_data)
+    state_list_conc = np.concatenate(state_list)
+    label_list = []
+    num_eps = len(traces_data)
+    for ep in range(num_eps):
+        sub_dir_path = data_dir_path + "trace_" + str(ep) + "/"
+        with open(sub_dir_path + "events.pkl", "rb") as f:
+            events = pickle.load(f)
+        label_list.append(events)
+    label_list_conc = np.concatenate(label_list)
+    dataset = zip(state_list_conc, label_list_conc)
+    dataset = random.shuffle(dataset)
+    # This solution is while we have one dataset that we are splitting
+    data_size = len(dataset)
+    cut_off = math.floor((2 * data_size) / 3)
+    train_data = dataset[:cut_off]
+    test_data = dataset[cut_off:]
+    return train_data, test_data
+
 def run_labelling_func_framework():
     # Determines whether or not the balls are frozen
     use_velocities = False
@@ -73,6 +98,7 @@ def run_labelling_func_framework():
     test_batch_size = train_batch_size
     labelling_function = State2EventNet(input_size, num_events, num_layers, num_neurons)
     
+    train_data = get_dataset_for_model_train_and_eval(train_data_dir)
     # train_model(labelling_function, learning_rate, num_train_epochs, train_data, train_batch_size)
 
     # eval_model(labelling_function, test_data, test_batch_size)

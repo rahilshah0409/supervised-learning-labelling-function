@@ -42,9 +42,6 @@ class EventLabel(object):
     def get_pair(self):
         return (self.object1, self.object2)
     
-    def convert_to_vector(self):
-        # TODO: implement
-        return self
 
 def print_mask_info(masks_pkl_path, image):
     print("INSPECTING THE MASKS FOUND IN " + masks_pkl_path)
