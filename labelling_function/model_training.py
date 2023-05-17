@@ -35,20 +35,10 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
                 batch_target, batch_input = batch_target.cuda(), batch_input.cuda()
 
             batch_output = model.forward(batch_input)
-            # Calculate class weights (hardcoded for now)- make the class weight 100 if any event or events have been observed and 1 otherwise
-            no_event_tensor = torch.tensor(np.zeros(output_vec_size))
-            if torch.cuda.is_available():
-                no_event_tensor = no_event_tensor.cuda()
 
-            class_weights = torch.tensor([1 if torch.equal(target, no_event_tensor) else 100 for target in batch_target], dtype=torch.float)
-
-            if torch.cuda.is_available():
-                class_weights = class_weights.cuda()
-
-            weighted_bce_loss_per_elem = bce_loss_per_elem(batch_output, batch_target) * class_weights 
+            loss = bce_loss_per_elem(batch_output, batch_target)
 
             optimizer.zero_grad()
-            loss = weighted_bce_loss_per_elem.mean()
             total_train_loss += loss.item()
             loss.backward()
 

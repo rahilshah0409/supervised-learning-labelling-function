@@ -86,11 +86,10 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured):
     dataset = list(zip(state_list_conc, label_list_conc))
     random.shuffle(dataset)
 
-    # TODO: Calculate class weights instead of hardcoded values being used in the training process
-    label_distribution = _get_distribution_of_labels(dataset, events_captured)
-    data_size = len(dataset)
+    # TODO: Downsample the dataset
     
     # Split up dataset into training and test datasets once shuffled
+    data_size = len(dataset)
     cut_off = math.floor((2 * data_size) / 3)
     train_data = dataset[:cut_off]
     test_data = dataset[cut_off:]
@@ -158,14 +157,16 @@ def run_labelling_func_framework():
         }
     )
 
-    # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
+    labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
+
+    labelling_fn_loc = "trained_model/label_fun.pth"
+
     # print("Evaluating the initial model (without any training)")
     # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
 
-    print("Evaluating the model after being trained on the training dataset")
-    labelling_fn_loc = "trained_model/label_fun.pth"
-    labelling_fn.load_state_dict(torch.load(labelling_fn_loc))
-    eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
+    # print("Evaluating the model after being trained on the training dataset")
+    # labelling_fn.load_state_dict(torch.load(labelling_fn_loc))
+    # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
     torch.save(labelling_fn.state_dict(), labelling_fn_loc)
 
     return labelling_fn
