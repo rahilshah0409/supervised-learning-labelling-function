@@ -6,6 +6,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 import numpy as np
 import wandb
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 def train_model(model, train_data, train_batch_size, test_data, test_batch_size, lr, num_epochs, output_vec_size, events_captured):
     if torch.cuda.is_available():
@@ -34,9 +35,14 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
                 batch_target, batch_input = batch_target.cuda(), batch_input.cuda()
 
             batch_output = model.forward(batch_input)
+            # Calculate class weights (hardcoded for now)- make the class weight 100 if any event or events have been observed and 1 otherwise
+            no_event_tensor = torch.tensor(np.zeros(output_vec_size))
+            class_weights = torch.tensor([1 if torch.eq(target, no_event_tensor) else 100 for target in batch_target], dtype=torch.float)
+
+            weighted_bce_loss_per_elem = bce_loss_per_elem(batch_output, batch_target) * class_weights 
 
             optimizer.zero_grad()
-            loss = bce_loss_per_elem(batch_output, batch_target)
+            loss = weighted_bce_loss_per_elem.mean()
             total_train_loss += loss.item()
             loss.backward()
 
@@ -45,12 +51,16 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
             optimizer.step()
 
         avg_train_loss = round(total_train_loss / num_batches, 5)
-        avg_test_loss = round(eval_model(model, test_data, test_batch_size, events_captured, output_vec_size), 5)
+        avg_test_loss, precision, recall, f1 = eval_model(model, test_data, test_batch_size, events_captured, output_vec_size)
+        avg_test_loss = round(avg_test_loss, 5)
         epoch_train_losses.append(avg_train_loss)
         epoch_test_losses.append(avg_test_loss)
-        wandb.log({"epoch": epoch, "train_loss": avg_train_loss, "test_loss": avg_test_loss})
-
-        # Maybe get the loss when tested against unseen test data. Need to make sure that the test data is truly unseen
+        wandb.log({"epoch": epoch, 
+                   "train_loss": avg_train_loss, 
+                   "test_loss": avg_test_loss, 
+                   "test_precision": precision, 
+                   "test_recall": recall, 
+                   "test_f1": f1})
 
         print("Epoch: {}. Training loss: {}. Test loss: {}".format(epoch, avg_train_loss, avg_test_loss))
 
@@ -62,6 +72,8 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
         model.cuda()
     num_batches = math.ceil(len(test_data) / batch_size)
     total_loss = 0
+    acc = []
+    pred = []
     with torch.no_grad():
         for bi in range(num_batches):
             batch = test_data[(bi * batch_size) : (bi * batch_size) + batch_size]
@@ -75,9 +87,12 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
                 batch_input, batch_target = batch_input.cuda(), batch_target.cuda()
 
             batch_output = model(batch_input)
-            print("Batch output and label in dataset")
-            wrong_predictions = [(torch.round(torch.sigmoid(output)), target) for output, target in zip(batch_output, batch_target) if not torch.equal(torch.round(torch.sigmoid(output)), target)]
-            print(wrong_predictions)
+            acc.extend(batch_target.cpu().numpy())
+            pred.extend(torch.sigmoid(batch_output).cpu().numpy())
+
+            # print("Batch output and label in dataset")
+            # wrong_predictions = [(torch.round(torch.sigmoid(output)), target) for output, target in zip(batch_output, batch_target) if not torch.equal(torch.round(torch.sigmoid(output)), target)]
+            # print(wrong_predictions)
 
             bce_loss_per_elem = nn.BCEWithLogitsLoss().cuda() if torch.cuda.is_available() else nn.BCEWithLogitsLoss()
             loss = bce_loss_per_elem(batch_output, batch_target)
@@ -85,9 +100,18 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
             print("Batch: {}. Loss on test set: {}".format(bi, loss.item()))
 
     # Return average loss per batch
-    return total_loss / num_batches
+    avg_loss = total_loss / num_batches
+    acc = np.concatenate(acc, axis=0)
+    pred = np.concatenate(pred, axis=0)
+    pred_binary = (pred >= 0.5).astype(int)
 
-# TODO: Implement this function
+    # We calculate the precision, recall and f1 score via micro averaging since the dataset is imbalanced and each class is treated equally despite imbalance
+    precision = precision_score(acc, pred_binary, average='micro')
+    recall = recall_score(acc, pred_binary, average='micro')
+    f1 = f1_score(acc, pred_binary, average='micro')
+
+    return avg_loss, precision, recall, f1
+
 def convert_events_to_output_vectors(events_list, output_vec_size, events_captured):
     vectors_list = []
     events_captured_list = sorted(list(filter(lambda pair: pair[0] == "black" or pair[1] == "black", events_captured)))

@@ -60,14 +60,21 @@ def _get_distribution_of_labels(dataset, events_captured):
             distribution['no_event'] = distribution['no_event'] + 1
         else:
             for event in label:
-                distribution[event] = distribution[event] + 1
+                if event not in events_captured:
+                    # Treat as if nothing happened
+                    distribution['no_event'] = distribution['no_event'] + 1
+                else:
+                    distribution[event] = distribution[event] + 1
     return distribution
 
-def get_dataset_for_model_train_and_eval(data_dir_path):
+def get_dataset_for_model_train_and_eval(data_dir_path, events_captured):
+    # Get the inputs
     with open(data_dir_path + "traces_data.pkl", "rb") as f:
         traces_data = pickle.load(f)
     state_list = list(map(lambda td: td['vectors'], traces_data))
     state_list_conc = np.concatenate(state_list)
+    
+    # Get the target labels
     label_list = []
     num_eps = len(traces_data)
     for ep in range(num_eps):
@@ -78,15 +85,16 @@ def get_dataset_for_model_train_and_eval(data_dir_path):
     label_list_conc = np.concatenate(label_list)
     dataset = list(zip(state_list_conc, label_list_conc))
     random.shuffle(dataset)
-    # print("Size of dataset: {}".format(len(dataset)))
-    # print("First dataset point: " + str(dataset[0]))
-    # This solution is while we have one dataset that we are splitting
+
+    # TODO: Calculate class weights instead of hardcoded values being used in the training process
+    label_distribution = _get_distribution_of_labels(dataset, events_captured)
     data_size = len(dataset)
+    
+    # Split up dataset into training and test datasets once shuffled
     cut_off = math.floor((2 * data_size) / 3)
     train_data = dataset[:cut_off]
     test_data = dataset[cut_off:]
-    # print("Size of training data: {}".format(len(train_data)))
-    # print("Size of test data: {}".format(len(test_data)))
+    
     return train_data, test_data
 
 def get_output_size(dynamic_balls):
@@ -114,8 +122,10 @@ def run_labelling_func_framework():
 
     # TODO: Need to check quality of training and test dataset created by specified metrics
 
+    # Should I be filtering the irrelevant events here?
     with open("events_captured_3.pkl", "rb") as f:
         events_captured = pickle.load(f)
+    events_captured_filtered = set(filter(lambda pair: pair[0] == "black" or pair[1] == "black", events_captured))
     
     # Create the model (i.e. learnt labelling function)
     input_size = 52 if use_velocities else 28
@@ -125,7 +135,7 @@ def run_labelling_func_framework():
     labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
     
     # Get the training and test data from what has (already) been generated
-    train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir)
+    train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered)
 
     # print("EVALUATING THE TRAINING DATASET")
     # analyse_dataset(train_data, events_captured)
@@ -161,5 +171,4 @@ def run_labelling_func_framework():
     return labelling_fn
 
 if __name__ == "__main__":
-    # Sets up weights and biases for monitoring progress. Can I also use it for showing analysis of dataset
     labelling_function = run_labelling_func_framework()
