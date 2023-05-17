@@ -37,7 +37,13 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
             batch_output = model.forward(batch_input)
             # Calculate class weights (hardcoded for now)- make the class weight 100 if any event or events have been observed and 1 otherwise
             no_event_tensor = torch.tensor(np.zeros(output_vec_size))
-            class_weights = torch.tensor([1 if torch.eq(target, no_event_tensor) else 100 for target in batch_target], dtype=torch.float)
+            if torch.cuda.is_available():
+                no_event_tensor = no_event_tensor.cuda()
+
+            class_weights = torch.tensor([1 if torch.equal(target, no_event_tensor) else 100 for target in batch_target], dtype=torch.float)
+
+            if torch.cuda.is_available():
+                class_weights = class_weights.cuda()
 
             weighted_bce_loss_per_elem = bce_loss_per_elem(batch_output, batch_target) * class_weights 
 
@@ -91,13 +97,13 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
             pred.extend(torch.sigmoid(batch_output).cpu().numpy())
 
             # print("Batch output and label in dataset")
-            # wrong_predictions = [(torch.round(torch.sigmoid(output)), target) for output, target in zip(batch_output, batch_target) if not torch.equal(torch.round(torch.sigmoid(output)), target)]
-            # print(wrong_predictions)
+            wrong_predictions = [(torch.round(torch.sigmoid(output)), target) for output, target in zip(batch_output, batch_target) if not torch.equal(torch.round(torch.sigmoid(output)), target)]
+            print(wrong_predictions)
 
             bce_loss_per_elem = nn.BCEWithLogitsLoss().cuda() if torch.cuda.is_available() else nn.BCEWithLogitsLoss()
             loss = bce_loss_per_elem(batch_output, batch_target)
             total_loss += loss.item()
-            print("Batch: {}. Loss on test set: {}".format(bi, loss.item()))
+            # print("Batch: {}. Loss on test set: {}".format(bi, loss.item()))
 
     # Return average loss per batch
     avg_loss = total_loss / num_batches

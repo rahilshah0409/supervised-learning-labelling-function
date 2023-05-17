@@ -159,14 +159,14 @@ def run_labelling_func_framework():
     )
 
     # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
-    print("Evaluating the initial model (without any training)")
-    eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
-
-    # print("Evaluating the model after being trained on the training dataset")
-    # labelling_fn_loc = "trained_model/label_fun.pth"
-    # labelling_fn.load_state_dict(torch.load(labelling_fn_loc))
+    # print("Evaluating the initial model (without any training)")
     # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
-    # torch.save(labelling_fn.state_dict(), labelling_fn_loc)
+
+    print("Evaluating the model after being trained on the training dataset")
+    labelling_fn_loc = "trained_model/label_fun.pth"
+    labelling_fn.load_state_dict(torch.load(labelling_fn_loc))
+    eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
+    torch.save(labelling_fn.state_dict(), labelling_fn_loc)
 
     return labelling_fn
 
