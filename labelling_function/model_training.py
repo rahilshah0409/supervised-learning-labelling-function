@@ -87,8 +87,8 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
             pred.extend(torch.sigmoid(batch_output).cpu().numpy())
 
             # print("Batch output and label in dataset")
-            wrong_predictions = [(torch.round(torch.sigmoid(output)), target) for output, target in zip(batch_output, batch_target) if not torch.equal(torch.round(torch.sigmoid(output)), target)]
-            print(wrong_predictions)
+            # wrong_predictions = [(torch.round(torch.sigmoid(output)), target) for output, target in zip(batch_output, batch_target) if not torch.equal(torch.round(torch.sigmoid(output)), target)]
+            # print(wrong_predictions)
 
             bce_loss_per_elem = nn.BCEWithLogitsLoss().cuda() if torch.cuda.is_available() else nn.BCEWithLogitsLoss()
             loss = bce_loss_per_elem(batch_output, batch_target)

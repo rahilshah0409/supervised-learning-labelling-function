@@ -12,6 +12,7 @@ import random
 import math
 import torch
 from sklearn.utils import resample
+from imblearn.over_sampling import SMOTE
 
 def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
@@ -53,20 +54,28 @@ def analyse_dataset(dataset, events_captured):
 
 def _get_distribution_of_labels(dataset, events_captured):
     potential_events_list = list(events_captured)
-    distribution = dict.fromkeys(potential_events_list, 0)
-    distribution['no_event'] = 0
-    for datapoint in dataset:
+    freq_of_events = dict.fromkeys(potential_events_list, 0)
+    freq_of_events['no_event'] = 0
+    indices_of_events = dict.fromkeys(potential_events_list, [])
+    indices_of_events['no_event'] = []
+    for i, datapoint in enumerate(dataset):
         (_, label) = datapoint
         if not label:
-            distribution['no_event'] = distribution['no_event'] + 1
+            freq_of_events['no_event'] = freq_of_events['no_event'] + 1
+            indices_of_events["no_event"] = indices_of_events["no_event"].append(i)
         else:
+            any_relevant_event_detected = False
             for event in label:
-                if event not in events_captured:
-                    # Treat as if nothing happened
-                    distribution['no_event'] = distribution['no_event'] + 1
-                else:
-                    distribution[event] = distribution[event] + 1
-    return distribution
+                if event in events_captured:
+                    freq_of_events[event] = freq_of_events[event] + 1
+                    indices_of_events[event] = indices_of_events[event].append(i)
+                    any_relevant_event_detected = True
+                    break
+            if not any_relevant_event_detected:
+                freq_of_events['no_event'] = freq_of_events['no_event'] + 1
+                indices_of_events["no_event"] = indices_of_events["no_event"].append(i)
+                    
+    return freq_of_events, indices_of_events
 
 def get_dataset_for_model_train_and_eval(data_dir_path, events_captured):
     # Get the inputs
@@ -87,41 +96,46 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured):
     dataset = list(zip(state_list_conc, label_list_conc))
     random.shuffle(dataset)
 
-    # TODO: Downsample the dataset 
+    final_dataset = []
+
+    # Perform downsampling on the majority class (where no event is observed)
     downsampled_dataset = []
+    _, indices_of_events = _get_distribution_of_labels(dataset, events_captured)
+
+    current_dataset_size = len(dataset)
+    num_desired_samples = 500 # TODO: Change this hardcoded value to something more meaningful
+    # no_event_points = [dataset[i] for i in indices_of_events['no_event']]
     no_event_points = []
+    event_points = []
 
-    # Add any datapoint that shows an event to the downsampled_dataset directly
-    for datapoint in dataset:
-        if datapoint[1] == set():
-            no_event_points.append(datapoint)
+    for i in len(dataset):
+        if i in indices_of_events['no_event']:
+            no_event_points.append(dataset[i])
         else:
-            # Trying to handle multiple collisions here, even if that probably won't appear in the case we have right now (in fact it definitely won't)
-            any_event_added = False
-            for event in datapoint[1]:
-                if event in events_captured:
-                    downsampled_dataset.append(datapoint)
-                    any_event_added = True
-                    # We have added the datapoint, we don't need to add it again if there is another relevant event observed (we know AN event is observed and that is all we need)
-                    break
-            if not any_event_added:
-                no_event_points.append(datapoint)
-    
-    # Decrease the number of datapoints where no event is observed
-    data_size = len(dataset)
-    num_points_with_no_event = len(no_event_points)
-    num_desired_samples = math.ceil((data_size - num_points_with_no_event) / len(events_captured))
+            event_points.append(dataset[i])
 
+    downsampled_dataset.extend(event_points)
     downsampled_samples = resample(no_event_points, replace=False, n_samples=num_desired_samples, random_state=None)
     downsampled_dataset.extend(downsampled_samples)
 
-    random.shuffle(downsampled_dataset)
+    (states, labels) = zip(*downsampled_dataset)
+
+    # Use SMOTE to upsample the data
+    smote = SMOTE(sampling_strategy='auto', random_state=None, k_neighbors=5, n_jobs=None)  
+    # Should I downsample before upsampling with SMOTE? More likelihood of noisy datapoints generated because we have so few non-empty labelled datapoints to begin with and now we are trying to match an incredibly high number (950 ish from 15)
+    new_states, new_labels = smote.fit_resample(states, labels)
+    upsampled_samples = zip(new_states, new_labels)
+    final_dataset.extend(upsampled_samples)
+
+    # Where do I specify by how much to upsample each class by?. It comes from the sampling_strategy, 'auto' meaning that every other class apart from the majority looks to be equalised
+
+    random.shuffle(final_dataset)
     
     # Split up dataset into training and test datasets once shuffled
-    downsampled_data_size = len(downsampled_dataset)
-    cut_off = math.floor((2 * downsampled_data_size) / 3)
-    train_data = downsampled_dataset[:cut_off]
-    test_data = downsampled_dataset[cut_off:]
+    final_data_size = len(final_dataset)
+    cut_off = math.floor((2 * final_data_size) / 3)
+    train_data = final_dataset[:cut_off]
+    test_data = final_dataset[cut_off:]
     
     return train_data, test_data
 
@@ -165,10 +179,10 @@ def run_labelling_func_framework():
     # Get the training and test data from what has (already) been generated
     train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered)
 
-    print("EVALUATING THE TRAINING DATASET")
-    analyse_dataset(train_data, events_captured)
-    print("EVALUATING THE TEST DATASET")
-    analyse_dataset(test_data, events_captured)
+    # print("EVALUATING THE TRAINING DATASET")
+    # analyse_dataset(train_data, events_captured)
+    # print("EVALUATING THE TEST DATASET")
+    # analyse_dataset(test_data, events_captured)
     
     learning_rate = 0.01
     num_train_epochs = 500
@@ -176,17 +190,17 @@ def run_labelling_func_framework():
     test_batch_size = train_batch_size
 
     # Initialise weights and biases here
-    # wandb.init(
-    #     project="labelling-function-learning",
-    #     config={
-    #         "learning_rate": learning_rate,
-    #         "epochs": num_train_epochs,
-    #         "num_layers": num_layers,
-    #         "num_neurons": num_neurons 
-    #     }
-    # )
+    wandb.init(
+        project="labelling-function-learning",
+        config={
+            "learning_rate": learning_rate,
+            "epochs": num_train_epochs,
+            "num_layers": num_layers,
+            "num_neurons": num_neurons 
+        }
+    )
 
-    # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
+    labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
 
     labelling_fn_loc = "trained_model/label_fun.pth"
 
