@@ -11,6 +11,7 @@ import numpy as np
 import random
 import math
 import torch
+from sklearn.utils import resample
 
 def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
@@ -86,13 +87,41 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured):
     dataset = list(zip(state_list_conc, label_list_conc))
     random.shuffle(dataset)
 
-    # TODO: Downsample the dataset
+    # TODO: Downsample the dataset 
+    downsampled_dataset = []
+    no_event_points = []
+
+    # Add any datapoint that shows an event to the downsampled_dataset directly
+    for datapoint in dataset:
+        if datapoint[1] == set():
+            no_event_points.append(datapoint)
+        else:
+            # Trying to handle multiple collisions here, even if that probably won't appear in the case we have right now (in fact it definitely won't)
+            any_event_added = False
+            for event in datapoint[1]:
+                if event in events_captured:
+                    downsampled_dataset.append(datapoint)
+                    any_event_added = True
+                    # We have added the datapoint, we don't need to add it again if there is another relevant event observed (we know AN event is observed and that is all we need)
+                    break
+            if not any_event_added:
+                no_event_points.append(datapoint)
+    
+    # Decrease the number of datapoints where no event is observed
+    data_size = len(dataset)
+    num_points_with_no_event = len(no_event_points)
+    num_desired_samples = math.ceil((data_size - num_points_with_no_event) / len(events_captured))
+
+    downsampled_samples = resample(no_event_points, replace=False, n_samples=num_desired_samples, random_state=None)
+    downsampled_dataset.extend(downsampled_samples)
+
+    random.shuffle(downsampled_dataset)
     
     # Split up dataset into training and test datasets once shuffled
-    data_size = len(dataset)
-    cut_off = math.floor((2 * data_size) / 3)
-    train_data = dataset[:cut_off]
-    test_data = dataset[cut_off:]
+    downsampled_data_size = len(downsampled_dataset)
+    cut_off = math.floor((2 * downsampled_data_size) / 3)
+    train_data = downsampled_dataset[:cut_off]
+    test_data = downsampled_dataset[cut_off:]
     
     return train_data, test_data
 
@@ -136,10 +165,10 @@ def run_labelling_func_framework():
     # Get the training and test data from what has (already) been generated
     train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered)
 
-    # print("EVALUATING THE TRAINING DATASET")
-    # analyse_dataset(train_data, events_captured)
-    # print("EVALUATING THE TEST DATASET")
-    # analyse_dataset(test_data, events_captured)
+    print("EVALUATING THE TRAINING DATASET")
+    analyse_dataset(train_data, events_captured)
+    print("EVALUATING THE TEST DATASET")
+    analyse_dataset(test_data, events_captured)
     
     learning_rate = 0.01
     num_train_epochs = 500
@@ -147,17 +176,17 @@ def run_labelling_func_framework():
     test_batch_size = train_batch_size
 
     # Initialise weights and biases here
-    wandb.init(
-        project="labelling-function-learning",
-        config={
-            "learning_rate": learning_rate,
-            "epochs": num_train_epochs,
-            "num_layers": num_layers,
-            "num_neurons": num_neurons 
-        }
-    )
+    # wandb.init(
+    #     project="labelling-function-learning",
+    #     config={
+    #         "learning_rate": learning_rate,
+    #         "epochs": num_train_epochs,
+    #         "num_layers": num_layers,
+    #         "num_neurons": num_neurons 
+    #     }
+    # )
 
-    labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
+    # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
 
     labelling_fn_loc = "trained_model/label_fun.pth"
 
@@ -167,7 +196,7 @@ def run_labelling_func_framework():
     # print("Evaluating the model after being trained on the training dataset")
     # labelling_fn.load_state_dict(torch.load(labelling_fn_loc))
     # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
-    torch.save(labelling_fn.state_dict(), labelling_fn_loc)
+    # torch.save(labelling_fn.state_dict(), labelling_fn_loc)
 
     return labelling_fn
 
