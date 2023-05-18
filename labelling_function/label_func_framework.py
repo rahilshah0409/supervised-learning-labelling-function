@@ -12,7 +12,7 @@ import random
 import math
 import torch
 from sklearn.utils import resample
-from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import SMOTE, KMeansSMOTE
 
 def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
@@ -48,7 +48,7 @@ def label_dataset(img_dir_path, img_base_fname):
 # The dataset passed in as an argument in this function has datapoints in the form of tuples 
 def analyse_dataset(dataset, events_captured):
     print("The size of the dataset is {}".format(len(dataset)))
-    label_distribution = _get_distribution_of_labels(dataset, events_captured)
+    label_distribution, _ = _get_distribution_of_labels(dataset, events_captured)
     print("The label distribution")
     print(label_distribution)
 
@@ -56,28 +56,116 @@ def _get_distribution_of_labels(dataset, events_captured):
     potential_events_list = list(events_captured)
     freq_of_events = dict.fromkeys(potential_events_list, 0)
     freq_of_events['no_event'] = 0
-    indices_of_events = dict.fromkeys(potential_events_list, [])
+    indices_of_events = {event: [] for event in potential_events_list}
     indices_of_events['no_event'] = []
     for i, datapoint in enumerate(dataset):
         (_, label) = datapoint
         if not label:
             freq_of_events['no_event'] = freq_of_events['no_event'] + 1
-            indices_of_events["no_event"] = indices_of_events["no_event"].append(i)
+            indices_of_events['no_event'].append(i)
         else:
             any_relevant_event_detected = False
             for event in label:
                 if event in events_captured:
                     freq_of_events[event] = freq_of_events[event] + 1
-                    indices_of_events[event] = indices_of_events[event].append(i)
+                    indices_of_events[event].append(i)
                     any_relevant_event_detected = True
                     break
             if not any_relevant_event_detected:
                 freq_of_events['no_event'] = freq_of_events['no_event'] + 1
-                indices_of_events["no_event"] = indices_of_events["no_event"].append(i)
+                indices_of_events['no_event'].append(i)
                     
     return freq_of_events, indices_of_events
 
-def get_dataset_for_model_train_and_eval(data_dir_path, events_captured):
+# Perform downsampling on the class where no events are observed (this is what appears to be in the vast majority)
+def downsample_dataset(dataset, indices_of_events, num_desired_samples):
+    downsampled_dataset = []
+
+    curr_dataset_size = len(dataset)
+    no_event_points = []
+    event_points = []
+
+    for i in range(curr_dataset_size):
+        if i in indices_of_events['no_event']:
+            no_event_points.append(dataset[i])
+        else:
+            event_points.append(dataset[i])
+
+    downsampled_dataset.extend(event_points)
+    downsampled_samples = resample(no_event_points, replace=False, n_samples=num_desired_samples, random_state=None)
+    downsampled_dataset.extend(downsampled_samples)
+
+    return downsampled_dataset
+
+# Questions
+# If we are upsampling each class iteratively, do the new samples count to the dataset that we upsample in the next iteration. In the below implementation, this is not the case and this makes sense in my head because you don't want synthetically generated datapoints that might be noisy to determine how much the next class is upsampled by
+# This implementation makes the most sense to me given this setting, but it is worth thinking about how viable and extensible this is to the dynamic setting, where multiple labels per state is more likely (I am not even sure if this downsampling upsampling business will be needed as much)
+# Hyperparameters to think about: k_neighbours to sample b given reference a
+def upsample_with_smote(dataset, events_captured, k_neighbours=5):
+    (states, labels) = zip(*dataset)
+
+    final_dataset = dataset
+    for event in events_captured:
+        print(event)
+        # Where do I specify by how much to upsample each class by?. It comes from the sampling_strategy, 'auto' meaning that every other class apart from the majority looks to be equalised
+        smote = SMOTE(sampling_strategy='auto', random_state=None, k_neighbors=k_neighbours, n_jobs=None)
+        binary_labels = [1 if event in label else 0 for label in labels]
+        # Not sure what labels smote.fit resample produces and if I can get this back to either the tuple format or vector format  
+        print("Binary labels before resampling with SMOTE")
+        # print(binary_labels)
+        new_states, new_labels = smote.fit_resample(states, binary_labels)
+        # I am making the assumption here that the 'new' datapoints are just added to the end of what already exists in the dataset. I don't know if this is true or not
+        additional_states = new_states[len(states):]
+        additional_labels = new_labels[len(labels):]
+        print("Binary labels after resampling with SMOTE")
+        print(additional_labels)
+        # Not sure I like what I have done with this conversion here
+        event_set_label = set()
+        event_set_label.add(event)
+        additional_event_set_labels = [event_set_label] * len(additional_labels)
+        new_samples = zip(additional_states, additional_event_set_labels)
+        check_generated_samples(new_samples)
+        final_dataset.extend(new_samples)
+
+    return final_dataset
+    
+def upsample_with_kmeans_smote(dataset, events_captured, k_neighbours=2, num_clusters=130, cluster_balance_threshold=1.0):
+    (states, labels) = zip(*dataset)
+
+    final_dataset = dataset
+    for event in events_captured:
+        print(event)
+        # KMeans SMOTE object initialised with the default values for each parameter. Subject to change
+        kmeans_smote = KMeansSMOTE(sampling_strategy='auto', 
+                                   random_state=None, 
+                                   k_neighbors=k_neighbours, 
+                                   n_jobs=None, 
+                                   kmeans_estimator=num_clusters, cluster_balance_threshold=cluster_balance_threshold, density_exponent='auto')
+        binary_labels = [1 if event in label else 0 for label in labels]
+        # Not sure what labels smote.fit resample produces and if I can get this back to either the tuple format or vector format  
+        print("Binary labels before resampling with SMOTE")
+        print(binary_labels)
+        new_states, new_labels = kmeans_smote.fit_resample(states, binary_labels)
+        print("Binary labels after resampling with SMOTE")
+        print(new_labels)
+        # I am making the assumption here that the 'new' datapoints are just added to the end of what already exists in the dataset. I don't know if this is true or not
+        additional_states = new_states[len(states):]
+        additional_labels = new_labels[len(labels):]
+        # print(additional_labels)
+        # # Not sure I like what I have done with this conversion here
+        # event_set_label = set()
+        # event_set_label.add(event)
+        # additional_event_set_labels = [event_set_label] * len(additional_labels)
+        # new_samples = zip(additional_states, additional_event_set_labels)
+        # check_generated_samples(new_samples)
+        # final_dataset.extend(new_samples)
+
+    return final_dataset
+
+def check_generated_samples(new_samples):
+    return
+
+def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, see_dataset=True):
     # Get the inputs
     with open(data_dir_path + "traces_data.pkl", "rb") as f:
         traces_data = pickle.load(f)
@@ -93,49 +181,31 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured):
             events = pickle.load(f)
         label_list.append(events)
     label_list_conc = np.concatenate(label_list)
+
+    # Create initial dataset and get its metadata
     dataset = list(zip(state_list_conc, label_list_conc))
     random.shuffle(dataset)
-
-    final_dataset = []
-
-    # Perform downsampling on the majority class (where no event is observed)
-    downsampled_dataset = []
     _, indices_of_events = _get_distribution_of_labels(dataset, events_captured)
 
-    current_dataset_size = len(dataset)
-    num_desired_samples = 500 # TODO: Change this hardcoded value to something more meaningful
-    # no_event_points = [dataset[i] for i in indices_of_events['no_event']]
-    no_event_points = []
-    event_points = []
+    # Perform downsampling on the dataset
+    dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=200)
 
-    for i in len(dataset):
-        if i in indices_of_events['no_event']:
-            no_event_points.append(dataset[i])
-        else:
-            event_points.append(dataset[i])
-
-    downsampled_dataset.extend(event_points)
-    downsampled_samples = resample(no_event_points, replace=False, n_samples=num_desired_samples, random_state=None)
-    downsampled_dataset.extend(downsampled_samples)
-
-    (states, labels) = zip(*downsampled_dataset)
-
-    # Use SMOTE to upsample the data
-    smote = SMOTE(sampling_strategy='auto', random_state=None, k_neighbors=5, n_jobs=None)  
     # Should I downsample before upsampling with SMOTE? More likelihood of noisy datapoints generated because we have so few non-empty labelled datapoints to begin with and now we are trying to match an incredibly high number (950 ish from 15)
-    new_states, new_labels = smote.fit_resample(states, labels)
-    upsampled_samples = zip(new_states, new_labels)
-    final_dataset.extend(upsampled_samples)
+    # dataset = upsample_with_smote(dataset, events_captured, k_neighbours=5)
+    dataset = upsample_with_kmeans_smote(dataset, events_captured, k_neighbours=2, num_clusters=100, cluster_balance_threshold=1.0)
 
-    # Where do I specify by how much to upsample each class by?. It comes from the sampling_strategy, 'auto' meaning that every other class apart from the majority looks to be equalised
+    random.shuffle(dataset)
 
-    random.shuffle(final_dataset)
+    if see_dataset:
+        new_freq_of_events, _ = _get_distribution_of_labels(dataset, events_captured)
+        print("The label distribution")
+        print(new_freq_of_events)
     
     # Split up dataset into training and test datasets once shuffled
-    final_data_size = len(final_dataset)
+    final_data_size = len(dataset)
     cut_off = math.floor((2 * final_data_size) / 3)
-    train_data = final_dataset[:cut_off]
-    test_data = final_dataset[cut_off:]
+    train_data = dataset[:cut_off]
+    test_data = dataset[cut_off:]
     
     return train_data, test_data
 
@@ -177,7 +247,7 @@ def run_labelling_func_framework():
     labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
     
     # Get the training and test data from what has (already) been generated
-    train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered)
+    train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered, see_dataset=False)
 
     # print("EVALUATING THE TRAINING DATASET")
     # analyse_dataset(train_data, events_captured)
@@ -190,17 +260,17 @@ def run_labelling_func_framework():
     test_batch_size = train_batch_size
 
     # Initialise weights and biases here
-    wandb.init(
-        project="labelling-function-learning",
-        config={
-            "learning_rate": learning_rate,
-            "epochs": num_train_epochs,
-            "num_layers": num_layers,
-            "num_neurons": num_neurons 
-        }
-    )
+    # wandb.init(
+    #     project="labelling-function-learning",
+    #     config={
+    #         "learning_rate": learning_rate,
+    #         "epochs": num_train_epochs,
+    #         "num_layers": num_layers,
+    #         "num_neurons": num_neurons 
+    #     }
+    # )
 
-    labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
+    # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
 
     labelling_fn_loc = "trained_model/label_fun.pth"
 
