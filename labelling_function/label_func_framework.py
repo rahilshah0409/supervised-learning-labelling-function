@@ -107,19 +107,15 @@ def upsample_with_smote(dataset, events_captured, k_neighbours=5):
     final_dataset = dataset
     for event in events_captured:
         print(event)
-        # Where do I specify by how much to upsample each class by?. It comes from the sampling_strategy, 'auto' meaning that every other class apart from the majority looks to be equalised
         smote = SMOTE(sampling_strategy='auto', random_state=None, k_neighbors=k_neighbours, n_jobs=None)
         binary_labels = [1 if event in label else 0 for label in labels]
-        # Not sure what labels smote.fit resample produces and if I can get this back to either the tuple format or vector format  
         print("Binary labels before resampling with SMOTE")
         # print(binary_labels)
         new_states, new_labels = smote.fit_resample(states, binary_labels)
-        # I am making the assumption here that the 'new' datapoints are just added to the end of what already exists in the dataset. I don't know if this is true or not
         additional_states = new_states[len(states):]
         additional_labels = new_labels[len(labels):]
-        print("Binary labels after resampling with SMOTE")
-        print(additional_labels)
-        # Not sure I like what I have done with this conversion here
+        # print("Binary labels after resampling with SMOTE")
+        # print(additional_labels)
         event_set_label = set()
         event_set_label.add(event)
         additional_event_set_labels = [event_set_label] * len(additional_labels)
@@ -129,38 +125,52 @@ def upsample_with_smote(dataset, events_captured, k_neighbours=5):
 
     return final_dataset
     
+# Hyperparameters to think about: number of neighbours to sample b from reference a once a cluster has been selected for SMOTE upsampling, number of clusters to cluster the space on, the threshold that determines which clusters are selected for SMOTE upsampling
 def upsample_with_kmeans_smote(dataset, events_captured, k_neighbours=2, num_clusters=130, cluster_balance_threshold=1.0):
     (states, labels) = zip(*dataset)
 
     final_dataset = dataset
     for event in events_captured:
         print(event)
-        # KMeans SMOTE object initialised with the default values for each parameter. Subject to change
+        # KMeans SMOTE object initialised with the default values for each parameter. Needs to be changed
         kmeans_smote = KMeansSMOTE(sampling_strategy='auto', 
                                    random_state=None, 
                                    k_neighbors=k_neighbours, 
                                    n_jobs=None, 
                                    kmeans_estimator=num_clusters, cluster_balance_threshold=cluster_balance_threshold, density_exponent='auto')
         binary_labels = [1 if event in label else 0 for label in labels]
-        # Not sure what labels smote.fit resample produces and if I can get this back to either the tuple format or vector format  
-        print("Binary labels before resampling with SMOTE")
-        print(binary_labels)
+        # print("Binary labels before resampling with SMOTE")
+        # print(binary_labels)
         new_states, new_labels = kmeans_smote.fit_resample(states, binary_labels)
-        print("Binary labels after resampling with SMOTE")
-        print(new_labels)
-        # I am making the assumption here that the 'new' datapoints are just added to the end of what already exists in the dataset. I don't know if this is true or not
+        # print("Binary labels after resampling with SMOTE")
+        # print(new_labels)
         additional_states = new_states[len(states):]
         additional_labels = new_labels[len(labels):]
         # print(additional_labels)
-        # # Not sure I like what I have done with this conversion here
-        # event_set_label = set()
-        # event_set_label.add(event)
-        # additional_event_set_labels = [event_set_label] * len(additional_labels)
-        # new_samples = zip(additional_states, additional_event_set_labels)
-        # check_generated_samples(new_samples)
-        # final_dataset.extend(new_samples)
+        event_set_label = set()
+        event_set_label.add(event)
+        additional_event_set_labels = [event_set_label] * len(additional_labels)
+        new_samples = zip(additional_states, additional_event_set_labels)
+        check_generated_samples(new_samples)
+        final_dataset.extend(new_samples)
 
     return final_dataset
+
+def upsample_randomly(dataset, events_captured):
+    initial_freq_of_events, _ = _get_distribution_of_labels(dataset, events_captured)
+    num_desired_samples = max(list(initial_freq_of_events.values()))
+    new_dataset = dataset
+    for i, (state, event_set) in enumerate(dataset):
+        if event_set:
+            for event in event_set:
+                current_freq_of_events, _ = _get_distribution_of_labels(new_dataset, events_captured)
+                if event in events_captured:
+                    current_freq = initial_freq_of_events[event]
+                    if num_desired_samples > current_freq:
+                        amount_to_upsample = math.ceil(num_desired_samples / current_freq)
+                        for i in range(amount_to_upsample):
+                            new_dataset.append((state, event_set)) 
+    return new_dataset
 
 def check_generated_samples(new_samples):
     return
@@ -185,20 +195,25 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, see_dat
     # Create initial dataset and get its metadata
     dataset = list(zip(state_list_conc, label_list_conc))
     random.shuffle(dataset)
-    _, indices_of_events = _get_distribution_of_labels(dataset, events_captured)
+    initial_freq_of_events, indices_of_events = _get_distribution_of_labels(dataset, events_captured)
+
+    if see_dataset:
+        print("Before any data augmentation (downsampling or upsampling)")
+        print(initial_freq_of_events)
 
     # Perform downsampling on the dataset
     dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=200)
 
-    # Should I downsample before upsampling with SMOTE? More likelihood of noisy datapoints generated because we have so few non-empty labelled datapoints to begin with and now we are trying to match an incredibly high number (950 ish from 15)
+    # Upsample the dataset in one of three ways
     # dataset = upsample_with_smote(dataset, events_captured, k_neighbours=5)
-    dataset = upsample_with_kmeans_smote(dataset, events_captured, k_neighbours=2, num_clusters=100, cluster_balance_threshold=1.0)
+    # dataset = upsample_with_kmeans_smote(dataset, events_captured, k_neighbours=2, num_clusters=100, cluster_balance_threshold=1.0)
+    dataset = upsample_randomly(dataset, events_captured)
 
     random.shuffle(dataset)
 
     if see_dataset:
+        print("After some data augmentation (downsampling or upsampling or both)")
         new_freq_of_events, _ = _get_distribution_of_labels(dataset, events_captured)
-        print("The label distribution")
         print(new_freq_of_events)
     
     # Split up dataset into training and test datasets once shuffled
@@ -208,6 +223,15 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, see_dat
     test_data = dataset[cut_off:]
     
     return train_data, test_data
+
+# Thoughts on dataset handling, downsampling, upsampling, etc
+# Should I downsample before upsampling with SMOTE? More likelihood of noisy datapoints generated because we have so few non-empty labelled datapoints to begin with and now we are trying to match an incredibly high number (950 ish from 15)
+# Being careful when upsampling randomly because I know that we have a multi-label setting, meaning that copying one datapoint to upsample a certain class may also upsample another class indirectly. Upsampling in the multi-label setting needs a bit of thinking, but I am going to go with this because I think we don't have to worry too much about the multi-label setting (in this frozen environment)
+# Having trouble applying kmeans smote to our particular dataset (my guess is because there is so much of an imbalance so no sufficient clusters can be formed to then be chosen for areas to oversampling on via SMOTE)
+# In both SMOTE and KMeans SMOTE, I need to convert labels of datapoints to be binary and what is outputed is also binary. The new datapoints may have noise (and not be an interesection) but they may also be more than one intersection that I have no way (right now) of picking up and so I do a rudimentary conversion
+# I am making the assumption in SMOTE and KMeans SMOTE that the 'new' datapoints are just added to the end of what already exists in the dataset. I don't know if this is true or not
+# Where do I specify by how much to upsample each class by in SMOTE and KMeans SMOTE? It comes from the sampling_strategy, 'auto' meaning that every other class apart from the majority looks to be equalised
+
 
 def get_output_size(dynamic_balls):
     # 21 is obtained from n * (n - 1) / 2 where n is 7 (7 balls)
