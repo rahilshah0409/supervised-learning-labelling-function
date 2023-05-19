@@ -13,6 +13,7 @@ import math
 import torch
 from sklearn.utils import resample
 from imblearn.over_sampling import SMOTE, KMeansSMOTE
+import threading
 
 def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
@@ -53,11 +54,15 @@ def analyse_dataset(dataset, events_captured):
     print(label_distribution)
 
 def _get_distribution_of_labels(dataset, events_captured):
-    potential_events_list = list(events_captured)
-    freq_of_events = dict.fromkeys(potential_events_list, 0)
+    potential_events_list = sorted(list(events_captured))
+    freq_of_events = {event: 0 for event in potential_events_list}
     freq_of_events['no_event'] = 0
     indices_of_events = {event: [] for event in potential_events_list}
     indices_of_events['no_event'] = []
+
+    print(len(dataset))
+    # def process_datapoint(i, datapoint):
+    #     nonlocal freq_of_events, indices_of_events
     for i, datapoint in enumerate(dataset):
         (_, label) = datapoint
         if not label:
@@ -65,16 +70,18 @@ def _get_distribution_of_labels(dataset, events_captured):
             indices_of_events['no_event'].append(i)
         else:
             any_relevant_event_detected = False
+            if len(label) > 1:
+                print("Wow multiple labels are being found for a given state")
+                print(str(label))
             for event in label:
                 if event in events_captured:
                     freq_of_events[event] = freq_of_events[event] + 1
                     indices_of_events[event].append(i)
                     any_relevant_event_detected = True
-                    break
             if not any_relevant_event_detected:
                 freq_of_events['no_event'] = freq_of_events['no_event'] + 1
                 indices_of_events['no_event'].append(i)
-                    
+    
     return freq_of_events, indices_of_events
 
 # Perform downsampling on the class where no events are observed (this is what appears to be in the vast majority)
@@ -157,19 +164,24 @@ def upsample_with_kmeans_smote(dataset, events_captured, k_neighbours=2, num_clu
     return final_dataset
 
 def upsample_randomly(dataset, events_captured):
+    # print("The size of the dataset is: {}".format(len(dataset)))
     initial_freq_of_events, _ = _get_distribution_of_labels(dataset, events_captured)
+    # print(initial_freq_of_events)
     num_desired_samples = max(list(initial_freq_of_events.values()))
-    new_dataset = dataset
-    for i, (state, event_set) in enumerate(dataset):
+    print(num_desired_samples)
+    new_dataset = dataset.copy()
+    for state, event_set in dataset:
+        # print("Datapoint {}".format(i))
+        # new_dataset.append((state, event_set))
         if event_set:
             for event in event_set:
-                current_freq_of_events, _ = _get_distribution_of_labels(new_dataset, events_captured)
-                if event in events_captured:
-                    current_freq = initial_freq_of_events[event]
-                    if num_desired_samples > current_freq:
-                        amount_to_upsample = math.ceil(num_desired_samples / current_freq)
-                        for i in range(amount_to_upsample):
-                            new_dataset.append((state, event_set)) 
+                already_upsampled = False
+                if event in events_captured and not already_upsampled:
+                    curr_freq = initial_freq_of_events[event]
+                    amount_to_upsample = math.floor((num_desired_samples - curr_freq)  / curr_freq)
+                    for _ in range(amount_to_upsample):
+                        new_dataset.append((state, event_set))
+                    already_upsampled = True
     return new_dataset
 
 def check_generated_samples(new_samples):
@@ -194,7 +206,7 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, see_dat
 
     # Create initial dataset and get its metadata
     dataset = list(zip(state_list_conc, label_list_conc))
-    random.shuffle(dataset)
+    # random.shuffle(dataset)
     initial_freq_of_events, indices_of_events = _get_distribution_of_labels(dataset, events_captured)
 
     if see_dataset:
@@ -202,19 +214,20 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, see_dat
         print(initial_freq_of_events)
 
     # Perform downsampling on the dataset
-    dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=200)
+    # dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=200)
 
     # Upsample the dataset in one of three ways
     # dataset = upsample_with_smote(dataset, events_captured, k_neighbours=5)
     # dataset = upsample_with_kmeans_smote(dataset, events_captured, k_neighbours=2, num_clusters=100, cluster_balance_threshold=1.0)
     dataset = upsample_randomly(dataset, events_captured)
 
-    random.shuffle(dataset)
+    # if see_dataset:
+    #     print("After some data augmentation (downsampling or upsampling or both)")
+    #     new_freq_of_events, new_indices = _get_distribution_of_labels(dataset, events_captured)
+    #     print(new_freq_of_events)
+    #     print("The size of the dataset is {}".format(len(dataset)))
 
-    if see_dataset:
-        print("After some data augmentation (downsampling or upsampling or both)")
-        new_freq_of_events, _ = _get_distribution_of_labels(dataset, events_captured)
-        print(new_freq_of_events)
+    random.shuffle(dataset)
     
     # Split up dataset into training and test datasets once shuffled
     final_data_size = len(dataset)
@@ -271,7 +284,7 @@ def run_labelling_func_framework():
     labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
     
     # Get the training and test data from what has (already) been generated
-    train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered, see_dataset=False)
+    train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered, see_dataset=True)
 
     # print("EVALUATING THE TRAINING DATASET")
     # analyse_dataset(train_data, events_captured)
