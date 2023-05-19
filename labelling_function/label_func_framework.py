@@ -244,7 +244,7 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, see_dat
 # In both SMOTE and KMeans SMOTE, I need to convert labels of datapoints to be binary and what is outputed is also binary. The new datapoints may have noise (and not be an interesection) but they may also be more than one intersection that I have no way (right now) of picking up and so I do a rudimentary conversion
 # I am making the assumption in SMOTE and KMeans SMOTE that the 'new' datapoints are just added to the end of what already exists in the dataset. I don't know if this is true or not
 # Where do I specify by how much to upsample each class by in SMOTE and KMeans SMOTE? It comes from the sampling_strategy, 'auto' meaning that every other class apart from the majority looks to be equalised
-
+# Was having a problem with upsampling randomly and not getting the distribution of frequencies that I was expecting. The problem lies in the fact that in four of the initial states, multiple events are observed. When we go to upsample one of said labels (that needs to be upsampled by n), we are also upsampling the other label/s by n as well, even if that label needs to be upsampled by m instead. Not sure how to get around this at first glance but don't think it is a major issue for the purposes of balancing the dataset.
 
 def get_output_size(dynamic_balls):
     # 21 is obtained from n * (n - 1) / 2 where n is 7 (7 balls)
