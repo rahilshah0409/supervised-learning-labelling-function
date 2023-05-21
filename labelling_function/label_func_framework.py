@@ -271,7 +271,7 @@ def run_labelling_func_framework():
     # Should I be filtering the irrelevant events here?
     with open("events_captured_3.pkl", "rb") as f:
         events_captured = pickle.load(f)
-    events_captured_filtered = set(filter(lambda pair: pair[0] == "black" or pair[1] == "black", events_captured))
+    events_captured_filtered = sorted(list(filter(lambda pair: pair[0] == "black" or pair[1] == "black", events_captured)))
     
     # Create the model (i.e. learnt labelling function)
     input_size = 52 if use_velocities else 28
@@ -299,7 +299,7 @@ def run_labelling_func_framework():
         }
     )
 
-    labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
+    # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
 
     labelling_fn_loc = "trained_model/label_fun.pth"
 
@@ -307,8 +307,8 @@ def run_labelling_func_framework():
     # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
 
     # print("Evaluating the model after being trained on the training dataset")
-    # labelling_fn.load_state_dict(torch.load(labelling_fn_loc))
-    # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
+    labelling_fn.load_state_dict(torch.load(labelling_fn_loc))
+    eval_model(labelling_fn, test_data, test_batch_size, events_captured_filtered, output_size)
     # torch.save(labelling_fn.state_dict(), labelling_fn_loc)
 
     return labelling_fn

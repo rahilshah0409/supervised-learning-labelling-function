@@ -36,24 +36,24 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
 
             batch_output = model.forward(batch_input)
 
-            no_event_class = torch.tensor(np.zeros(output_vec_size))
-            if torch.cuda.is_available():
-                no_event_class = no_event_class.cuda()
+            # no_event_class = torch.tensor(np.zeros(output_vec_size))
+            # if torch.cuda.is_available():
+            #     no_event_class = no_event_class.cuda()
 
-            class_weights = [0.01 if torch.equal(target, no_event_class) else 1 for target in batch_target]
-            class_weights_tensor = torch.tensor(class_weights, dtype=float)
-            if torch.cuda.is_available():
-                class_weights_tensor = class_weights_tensor.cuda()
+            # class_weights = [0.01 if torch.equal(target, no_event_class) else 1 for target in batch_target]
+            # class_weights_tensor = torch.tensor(class_weights, dtype=float)
+            # if torch.cuda.is_available():
+            #     class_weights_tensor = class_weights_tensor.cuda()
 
-            weighted_loss = bce_loss_per_elem(batch_output, batch_target) * class_weights_tensor
-            loss = weighted_loss.mean()
+            loss = bce_loss_per_elem(batch_output, batch_target)
+            # loss = weighted_loss.mean()
 
             optimizer.zero_grad()
             total_train_loss += loss.item()
             loss.backward()
 
             # Don't know what the below line does, look into
-            # nn.utils.clip_grad_norm_(model.parameters(), 5)
+            nn.utils.clip_grad_norm_(model.parameters(), 5)
             optimizer.step()
 
         avg_train_loss = round(total_train_loss / num_batches, 5)
@@ -107,9 +107,51 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
 
     # Return average loss per batch
     avg_loss = total_loss / num_batches
-    acc = np.concatenate(acc, axis=0)
-    pred = np.concatenate(pred, axis=0)
-    pred_binary = (pred >= 0.5).astype(int)
+    # print(acc)
+    # print(pred)
+    # acc = np.concatenate(acc, axis=0)
+    # pred = np.concatenate(pred, axis=0)
+    pred_binary = []
+    for p in pred:
+        p_bin = np.array([float(p[i] >= 0.5) for i in range(output_vec_size)])
+        pred_binary.append(p_bin)
+    # print(pred_binary)
+            
+    print(list(zip(acc, pred_binary)))
+
+    acc_events = convert_output_vectors_to_events(acc, output_vec_size, events_captured)
+    pred_events = convert_output_vectors_to_events(pred_binary, output_vec_size, events_captured)
+    print(acc_events)
+    print(pred_events)
+
+    correct_predictions_tracker = {event: {'tp': 0, 'fp': 0} for event in events_captured}
+    default_values = {'tp': 0, 'fp': 0}
+    # correct_predictions_tracker = dict.fromkeys(events_captured, default_values)
+    correct_predictions_tracker['no_event'] = default_values
+    for i in range(len(pred_events)):
+        if not pred_events[i]:
+            if acc_events[i]:
+                correct_predictions_tracker['no_event']['fp'] += 1
+            else:
+                correct_predictions_tracker['no_event']['tp'] += 1
+        else:
+            for event in pred_events[i]:
+                if event:
+                    if event in acc_events[i]:
+                        correct_predictions_tracker[event]['tp'] += 1
+                    else:
+                        correct_predictions_tracker[event]['fp'] += 1
+                
+
+    print("Precision scores")
+    for event in correct_predictions_tracker.keys():
+        tp = correct_predictions_tracker[event]['tp']
+        fp = correct_predictions_tracker[event]['fp']
+        precision = tp / (tp + fp)
+        print(event)
+        print(tp)
+        print(fp)
+        print(precision)
 
     # We calculate the precision, recall and f1 score via micro averaging since the dataset is imbalanced and each class is treated equally despite imbalance
     precision = precision_score(acc, pred_binary, average='micro')
@@ -132,3 +174,13 @@ def convert_events_to_output_vectors(events_list, output_vec_size, events_captur
                 output_vector[element_i] = 1
         vectors_list.append(output_vector)
     return vectors_list
+
+def convert_output_vectors_to_events(output_vector_list, output_vec_size, events_captured):
+    events_list = []
+    for output_vec in output_vector_list:
+        events = set()
+        for i in range(output_vec_size):
+            if output_vec[i] == 1.0:
+                events.add(events_captured[i])
+        events_list.append(events)
+    return events_list
