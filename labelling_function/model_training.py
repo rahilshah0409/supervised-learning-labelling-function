@@ -36,7 +36,17 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
 
             batch_output = model.forward(batch_input)
 
-            loss = bce_loss_per_elem(batch_output, batch_target)
+            no_event_class = torch.tensor(np.zeros(output_vec_size))
+            if torch.cuda.is_available():
+                no_event_class = no_event_class.cuda()
+
+            class_weights = [0.01 if torch.equal(target, no_event_class) else 1 for target in batch_target]
+            class_weights_tensor = torch.tensor(class_weights, dtype=float)
+            if torch.cuda.is_available():
+                class_weights_tensor = class_weights_tensor.cuda()
+
+            weighted_loss = bce_loss_per_elem(batch_output, batch_target) * class_weights
+            loss = weighted_loss.sum()
 
             optimizer.zero_grad()
             total_train_loss += loss.item()
