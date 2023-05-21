@@ -60,7 +60,7 @@ def _get_distribution_of_labels(dataset, events_captured):
     indices_of_events = {event: [] for event in potential_events_list}
     indices_of_events['no_event'] = []
 
-    print(len(dataset))
+    # print(len(dataset))
     # def process_datapoint(i, datapoint):
     #     nonlocal freq_of_events, indices_of_events
     for i, datapoint in enumerate(dataset):
@@ -70,9 +70,6 @@ def _get_distribution_of_labels(dataset, events_captured):
             indices_of_events['no_event'].append(i)
         else:
             any_relevant_event_detected = False
-            if len(label) > 1:
-                print("Wow multiple labels are being found for a given state")
-                print(str(label))
             for event in label:
                 if event in events_captured:
                     freq_of_events[event] = freq_of_events[event] + 1
@@ -214,11 +211,11 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, see_dat
         print(initial_freq_of_events)
 
     # Perform downsampling on the dataset
-    # dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=200)
+    dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=200)
 
     # Upsample the dataset in one of three ways
     # dataset = upsample_with_smote(dataset, events_captured, k_neighbours=5)
-    # dataset = upsample_with_kmeans_smote(dataset, events_captured, k_neighbours=2, num_clusters=100, cluster_balance_threshold=1.0)
+    # dataset = upsample_with_kmeans_smote(dataset, events_captured, k_neighbours=2, num_clusters=10, cluster_balance_threshold=2.0)
     dataset = upsample_randomly(dataset, events_captured)
 
     # if see_dataset:
@@ -284,12 +281,7 @@ def run_labelling_func_framework():
     labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
     
     # Get the training and test data from what has (already) been generated
-    train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered, see_dataset=True)
-
-    # print("EVALUATING THE TRAINING DATASET")
-    # analyse_dataset(train_data, events_captured)
-    # print("EVALUATING THE TEST DATASET")
-    # analyse_dataset(test_data, events_captured)
+    train_data, test_data = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered, see_dataset=False)
     
     learning_rate = 0.01
     num_train_epochs = 500
@@ -297,17 +289,17 @@ def run_labelling_func_framework():
     test_batch_size = train_batch_size
 
     # Initialise weights and biases here
-    # wandb.init(
-    #     project="labelling-function-learning",
-    #     config={
-    #         "learning_rate": learning_rate,
-    #         "epochs": num_train_epochs,
-    #         "num_layers": num_layers,
-    #         "num_neurons": num_neurons 
-    #     }
-    # )
+    wandb.init(
+        project="labelling-function-learning",
+        config={
+            "learning_rate": learning_rate,
+            "epochs": num_train_epochs,
+            "num_layers": num_layers,
+            "num_neurons": num_neurons 
+        }
+    )
 
-    # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
+    labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
 
     labelling_fn_loc = "trained_model/label_fun.pth"
 

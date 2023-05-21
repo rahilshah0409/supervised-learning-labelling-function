@@ -12,7 +12,7 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
     if torch.cuda.is_available():
         model.cuda()
 
-    bce_loss_per_elem = nn.BCEWithLogitsLoss().cuda() if torch.cuda.is_available() else nn.BCEWithLogitsLoss()
+    bce_loss_per_elem = nn.BCEWithLogitsLoss(reduction='sum').cuda() if torch.cuda.is_available() else nn.BCEWithLogitsLoss(reduction='sum')
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0)
 
     train_set_size = len(train_data)
@@ -90,7 +90,7 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
             # wrong_predictions = [(torch.round(torch.sigmoid(output)), target) for output, target in zip(batch_output, batch_target) if not torch.equal(torch.round(torch.sigmoid(output)), target)]
             # print(wrong_predictions)
 
-            bce_loss_per_elem = nn.BCEWithLogitsLoss().cuda() if torch.cuda.is_available() else nn.BCEWithLogitsLoss()
+            bce_loss_per_elem = nn.BCEWithLogitsLoss(reduction='sum').cuda() if torch.cuda.is_available() else nn.BCEWithLogitsLoss(reduction='sum')
             loss = bce_loss_per_elem(batch_output, batch_target)
             total_loss += loss.item()
             # print("Batch: {}. Loss on test set: {}".format(bi, loss.item()))
