@@ -12,7 +12,7 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
     if torch.cuda.is_available():
         model.cuda()
 
-    bce_loss_per_elem = nn.BCEWithLogitsLoss(reduction='sum').cuda() if torch.cuda.is_available() else nn.BCEWithLogitsLoss(reduction='sum')
+    bce_loss_per_elem = nn.BCEWithLogitsLoss(reduction='mean').cuda() if torch.cuda.is_available() else nn.BCEWithLogitsLoss(reduction='mean')
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0)
 
     train_set_size = len(train_data)
@@ -45,15 +45,15 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
             if torch.cuda.is_available():
                 class_weights_tensor = class_weights_tensor.cuda()
 
-            weighted_loss = bce_loss_per_elem(batch_output, batch_target) * class_weights
-            loss = weighted_loss.sum()
+            weighted_loss = bce_loss_per_elem(batch_output, batch_target) * class_weights_tensor
+            loss = weighted_loss.mean()
 
             optimizer.zero_grad()
             total_train_loss += loss.item()
             loss.backward()
 
             # Don't know what the below line does, look into
-            nn.utils.clip_grad_norm_(model.parameters(), 5)
+            # nn.utils.clip_grad_norm_(model.parameters(), 5)
             optimizer.step()
 
         avg_train_loss = round(total_train_loss / num_batches, 5)
@@ -100,7 +100,7 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
             # wrong_predictions = [(torch.round(torch.sigmoid(output)), target) for output, target in zip(batch_output, batch_target) if not torch.equal(torch.round(torch.sigmoid(output)), target)]
             # print(wrong_predictions)
 
-            bce_loss_per_elem = nn.BCEWithLogitsLoss(reduction='sum').cuda() if torch.cuda.is_available() else nn.BCEWithLogitsLoss(reduction='sum')
+            bce_loss_per_elem = nn.BCEWithLogitsLoss(reduction='mean').cuda() if torch.cuda.is_available() else nn.BCEWithLogitsLoss(reduction='mean')
             loss = bce_loss_per_elem(batch_output, batch_target)
             total_loss += loss.item()
             # print("Batch: {}. Loss on test set: {}".format(bi, loss.item()))

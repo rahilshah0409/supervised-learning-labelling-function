@@ -211,7 +211,7 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, see_dat
         print(initial_freq_of_events)
 
     # Perform downsampling on the dataset
-    # dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=200)
+    dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=15)
 
     # Upsample the dataset in one of three ways
     # dataset = upsample_with_smote(dataset, events_captured, k_neighbours=5)
