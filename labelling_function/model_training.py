@@ -57,16 +57,18 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
             optimizer.step()
 
         avg_train_loss = round(total_train_loss / num_batches, 5)
-        avg_test_loss, precision, recall, f1 = eval_model(model, test_data, test_batch_size, events_captured, output_vec_size)
+        avg_test_loss, precision_scores, recall_scores, f1_scores = eval_model(model, test_data, test_batch_size, events_captured, output_vec_size)
         avg_test_loss = round(avg_test_loss, 5)
-        epoch_train_losses.append(avg_train_loss)
-        epoch_test_losses.append(avg_test_loss)
+        
         wandb.log({"epoch": epoch, 
                    "train_loss": avg_train_loss, 
-                   "test_loss": avg_test_loss, 
-                   "test_precision": precision, 
-                   "test_recall": recall, 
-                   "test_f1": f1})
+                   "test_loss": avg_test_loss})
+        for event in precision_scores.keys():
+            wandb.log({"epoch": epoch,
+                       "test_precision_" + str(event): precision_scores[event],
+                       "test_recall_" + str(event): recall_scores[event],
+                       "test_f1_" + str(event): f1_scores[event]})
+            
 
         print("Epoch: {}. Training loss: {}. Test loss: {}".format(epoch, avg_train_loss, avg_test_loss))
 
@@ -98,8 +100,8 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
                 batch_input, batch_target = batch_input.cuda(), batch_target.cuda()
 
             batch_output = model(batch_input)
-            acc.extend(batch_target.cpu().numpy())
-            pred.extend(torch.sigmoid(batch_output).cpu().numpy())
+            acc.append(batch_target.cpu().numpy())
+            pred.append(torch.sigmoid(batch_output).cpu().numpy())
 
             # print("Batch output and label in dataset")
             # wrong_predictions = [(torch.round(torch.sigmoid(output)), target) for output, target in zip(batch_output, batch_target) if not torch.equal(torch.round(torch.sigmoid(output)), target)]
@@ -112,22 +114,23 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
 
     acc = np.concatenate(acc, axis=0)
     pred = np.concatenate(pred, axis=0)
+    # print(acc)
+    # print(pred)
     pred_binary = (pred >= 0.5).astype(int)
-    print(acc)
-    print(pred_binary)
+    # print(pred_binary)
 
     for event_i in range(output_vec_size):
-        precision = precision_score(acc[:, event_i], pred_binary[:, event_i])
-        recall = recall_score(acc[:, event_i], pred_binary[:, event_i])
-        f1 = f1_score(acc[:, event_i], pred_binary[:, event_i])
+        precision = precision_score(acc[:, event_i], pred_binary[:, event_i], zero_division='warn')
+        recall = recall_score(acc[:, event_i], pred_binary[:, event_i], zero_division='warn')
+        f1 = f1_score(acc[:, event_i], pred_binary[:, event_i], zero_division='warn')
         event_tuple = events_captured[event_i]
         precision_scores[event_tuple] = precision
         recall_scores[event_tuple] = recall
         f1_scores[event_tuple] = f1
 
-    no_event_precision = precision_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0)
-    no_event_recall = recall_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0)
-    no_event_f1 = f1_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0)
+    no_event_precision = precision_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0, zero_division=0)
+    no_event_recall = recall_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0, zero_division=0)
+    no_event_f1 = f1_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0, zero_division=0)
     precision_scores["no_event"] = no_event_precision
     recall_scores["no_event"] = no_event_recall
     f1_scores["no_event"] = no_event_f1
@@ -181,7 +184,7 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
     # recall = recall_score(acc, pred_binary, average='micro')
     # f1 = f1_score(acc, pred_binary, average='micro')
 
-    return avg_loss, 0, 0, 0
+    return avg_loss, precision_scores, recall_scores, f1_scores
 
 def convert_events_to_output_vectors(events_list, output_vec_size, events_captured):
     vectors_list = []
