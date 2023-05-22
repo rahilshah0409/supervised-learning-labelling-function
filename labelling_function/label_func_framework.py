@@ -80,27 +80,27 @@ def run_labelling_func_framework():
     test_batch_size = train_batch_size
     
     # Get the training and test data from what has (already) been generated
-    train_data, train_label_distribution, test_data, test_label_distribution = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered, see_dataset=False)
+    train_data, train_label_distribution, test_data, test_label_distribution = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered, use_velocities, see_dataset=False)
 
     # Initialise weights and biases here
-    wandb.init(
-        project="effect_of_data_augmentation",
-        config={
-            "learning_rate": learning_rate,
-            "epochs": num_train_epochs,
-            "num_layers": num_layers,
-            "num_neurons": num_neurons 
-        }
-    )
+    # wandb.init(
+    #     project="effect_of_data_augmentation",
+    #     config={
+    #         "learning_rate": learning_rate,
+    #         "epochs": num_train_epochs,
+    #         "num_layers": num_layers,
+    #         "num_neurons": num_neurons 
+    #     }
+    # )
 
-    for event in train_label_distribution.keys():
-        wandb.log({"event": event, "freq": train_label_distribution[event]})
+    # for event in train_label_distribution.keys():
+    #     wandb.log({"event": event, "freq": train_label_distribution[event]})
 
-    labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured_filtered)
+    # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured_filtered)
 
-    labelling_fn_loc = "trained_model/labelling_fn_down_250_upsample_smote.pth"
+    # labelling_fn_loc = "trained_model/labelling_fn_down_250_upsample_smote.pth"
 
-    torch.save(labelling_fn.state_dict(), labelling_fn_loc)
+    # torch.save(labelling_fn.state_dict(), labelling_fn_loc)
 
     # print("Evaluating the initial model (without any training)")
     # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)

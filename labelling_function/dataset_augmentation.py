@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 import math
 import random
+import gym
 
 def _get_distribution_of_labels(dataset, events_captured):
     potential_events_list = sorted(list(events_captured))
@@ -69,7 +70,7 @@ def downsample_dataset(dataset, indices_of_events, num_desired_samples):
 # If we are upsampling each class iteratively, do the new samples count to the dataset that we upsample in the next iteration. In the below implementation, this is not the case and this makes sense in my head because you don't want synthetically generated datapoints that might be noisy to determine how much the next class is upsampled by
 # This implementation makes the most sense to me given this setting, but it is worth thinking about how viable and extensible this is to the dynamic setting, where multiple labels per state is more likely (I am not even sure if this downsampling upsampling business will be needed as much)
 # Hyperparameters to think about: k_neighbours to sample b given reference a
-def upsample_with_smote(dataset, events_captured, k_neighbours=5):
+def upsample_with_smote(dataset, events_captured, use_velocities, k_neighbours=5):
     (states, labels) = zip(*dataset)
 
     final_dataset = dataset
@@ -88,13 +89,13 @@ def upsample_with_smote(dataset, events_captured, k_neighbours=5):
         event_set_label.add(event)
         additional_event_set_labels = [event_set_label] * len(additional_labels)
         new_samples = zip(additional_states, additional_event_set_labels)
-        check_generated_samples(new_samples)
+        check_generated_samples(new_samples, use_velocities, event)
         final_dataset.extend(new_samples)
 
     return final_dataset
     
 # Hyperparameters to think about: number of neighbours to sample b from reference a once a cluster has been selected for SMOTE upsampling, number of clusters to cluster the space on, the threshold that determines which clusters are selected for SMOTE upsampling
-def upsample_with_kmeans_smote(dataset, events_captured, k_neighbours=2, num_clusters=130, cluster_balance_threshold=1.0):
+def upsample_with_kmeans_smote(dataset, events_captured, use_velocities, k_neighbours=2, num_clusters=130, cluster_balance_threshold=1.0):
     (states, labels) = zip(*dataset)
 
     final_dataset = dataset
@@ -145,10 +146,14 @@ def upsample_randomly(dataset, events_captured):
                     already_upsampled = True
     return new_dataset
 
-def check_generated_samples(new_samples):
-    return
+def check_generated_samples(new_samples, use_velocities, event):
+    env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
+                   params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 200})
+    for sample in new_samples:
+        print("The event one should observe in this state is " + str(event))
+        env.see_synthetic_state(sample, use_velocities)
 
-def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, see_dataset=True):
+def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, use_velocities, see_dataset=True):
     # Get the inputs
     with open(data_dir_path + "traces_data.pkl", "rb") as f:
         traces_data = pickle.load(f)
@@ -178,8 +183,8 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, see_dat
     dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=250)
 
     # Upsample the dataset in one of three ways
-    dataset = upsample_with_smote(dataset, events_captured, k_neighbours=5)
-    # dataset = upsample_with_kmeans_smote(dataset, events_captured, k_neighbours=2, num_clusters=10, cluster_balance_threshold=2.0)
+    dataset = upsample_with_smote(dataset, events_captured, use_velocities, k_neighbours=5)
+    # dataset = upsample_with_kmeans_smote(dataset, events_captured, use_velocities, k_neighbours=2, num_clusters=10, cluster_balance_threshold=2.0)
     # dataset = upsample_randomly(dataset, events_captured)
 
     # if see_dataset:
