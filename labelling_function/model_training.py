@@ -80,6 +80,11 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
     total_loss = 0
     acc = []
     pred = []
+    events_captured.append("no_event")
+    precision_scores = {event: 0 for event in events_captured}
+    recall_scores = {event: 0 for event in events_captured}
+    f1_scores = {event: 0 for event in events_captured}
+
     with torch.no_grad():
         for bi in range(num_batches):
             batch = test_data[(bi * batch_size) : (bi * batch_size) + batch_size]
@@ -105,60 +110,78 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
             total_loss += loss.item()
             # print("Batch: {}. Loss on test set: {}".format(bi, loss.item()))
 
+    acc = np.concatenate(acc, axis=0)
+    pred = np.concatenate(pred, axis=0)
+    pred_binary = (pred >= 0.5).astype(int)
+    print(acc)
+    print(pred_binary)
+
+    for event_i in range(output_vec_size):
+        precision = precision_score(acc[:, event_i], pred_binary[:, event_i])
+        recall = recall_score(acc[:, event_i], pred_binary[:, event_i])
+        f1 = f1_score(acc[:, event_i], pred_binary[:, event_i])
+        event_tuple = events_captured[event_i]
+        precision_scores[event_tuple] = precision
+        recall_scores[event_tuple] = recall
+        f1_scores[event_tuple] = f1
+
+    no_event_precision = precision_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0)
+    no_event_recall = recall_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0)
+    no_event_f1 = f1_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0)
+    precision_scores["no_event"] = no_event_precision
+    recall_scores["no_event"] = no_event_recall
+    f1_scores["no_event"] = no_event_f1
+    
     # Return average loss per batch
     avg_loss = total_loss / num_batches
-    # print(acc)
-    # print(pred)
-    # acc = np.concatenate(acc, axis=0)
-    # pred = np.concatenate(pred, axis=0)
-    pred_binary = []
-    for p in pred:
-        p_bin = np.array([float(p[i] >= 0.5) for i in range(output_vec_size)])
-        pred_binary.append(p_bin)
-    # print(pred_binary)
+    # pred_binary = []
+    # for p in pred:
+    #     p_bin = np.array([float(p[i] >= 0.5) for i in range(output_vec_size)])
+    #     pred_binary.append(p_bin)
+    # # print(pred_binary)
             
-    print(list(zip(acc, pred_binary)))
+    # print(list(zip(acc, pred_binary)))
 
-    acc_events = convert_output_vectors_to_events(acc, output_vec_size, events_captured)
-    pred_events = convert_output_vectors_to_events(pred_binary, output_vec_size, events_captured)
-    print(acc_events)
-    print(pred_events)
+    # acc_events = convert_output_vectors_to_events(acc, output_vec_size, events_captured)
+    # pred_events = convert_output_vectors_to_events(pred_binary, output_vec_size, events_captured)
+    # print(acc_events)
+    # print(pred_events)
 
-    correct_predictions_tracker = {event: {'tp': 0, 'fp': 0} for event in events_captured}
-    default_values = {'tp': 0, 'fp': 0}
-    # correct_predictions_tracker = dict.fromkeys(events_captured, default_values)
-    correct_predictions_tracker['no_event'] = default_values
-    for i in range(len(pred_events)):
-        if not pred_events[i]:
-            if acc_events[i]:
-                correct_predictions_tracker['no_event']['fp'] += 1
-            else:
-                correct_predictions_tracker['no_event']['tp'] += 1
-        else:
-            for event in pred_events[i]:
-                if event:
-                    if event in acc_events[i]:
-                        correct_predictions_tracker[event]['tp'] += 1
-                    else:
-                        correct_predictions_tracker[event]['fp'] += 1
+    # correct_predictions_tracker = {event: {'tp': 0, 'fp': 0} for event in events_captured}
+    # default_values = {'tp': 0, 'fp': 0}
+    # # correct_predictions_tracker = dict.fromkeys(events_captured, default_values)
+    # correct_predictions_tracker['no_event'] = default_values
+    # for i in range(len(pred_events)):
+    #     if not pred_events[i]:
+    #         if acc_events[i]:
+    #             correct_predictions_tracker['no_event']['fp'] += 1
+    #         else:
+    #             correct_predictions_tracker['no_event']['tp'] += 1
+    #     else:
+    #         for event_i in pred_events[i]:
+    #             if event_i:
+    #                 if event_i in acc_events[i]:
+    #                     correct_predictions_tracker[event_i]['tp'] += 1
+    #                 else:
+    #                     correct_predictions_tracker[event_i]['fp'] += 1
                 
 
-    print("Precision scores")
-    for event in correct_predictions_tracker.keys():
-        tp = correct_predictions_tracker[event]['tp']
-        fp = correct_predictions_tracker[event]['fp']
-        precision = tp / (tp + fp)
-        print(event)
-        print(tp)
-        print(fp)
-        print(precision)
+    # print("Precision scores")
+    # for event_i in correct_predictions_tracker.keys():
+    #     tp = correct_predictions_tracker[event_i]['tp']
+    #     fp = correct_predictions_tracker[event_i]['fp']
+    #     precision = tp / (tp + fp)
+    #     print(event_i)
+    #     print(tp)
+    #     print(fp)
+    #     print(precision)
 
     # We calculate the precision, recall and f1 score via micro averaging since the dataset is imbalanced and each class is treated equally despite imbalance
-    precision = precision_score(acc, pred_binary, average='micro')
-    recall = recall_score(acc, pred_binary, average='micro')
-    f1 = f1_score(acc, pred_binary, average='micro')
+    # precision = precision_score(acc, pred_binary, average='micro')
+    # recall = recall_score(acc, pred_binary, average='micro')
+    # f1 = f1_score(acc, pred_binary, average='micro')
 
-    return avg_loss, precision, recall, f1
+    return avg_loss, 0, 0, 0
 
 def convert_events_to_output_vectors(events_list, output_vec_size, events_captured):
     vectors_list = []

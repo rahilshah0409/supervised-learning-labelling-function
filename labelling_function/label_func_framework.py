@@ -301,7 +301,7 @@ def run_labelling_func_framework():
 
     # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured)
 
-    labelling_fn_loc = "trained_model/label_fun.pth"
+    labelling_fn_loc = "trained_model/labelling_fn_artificially_balanced_data.pth"
 
     # print("Evaluating the initial model (without any training)")
     # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
