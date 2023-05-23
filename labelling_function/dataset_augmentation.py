@@ -5,6 +5,7 @@ import pickle
 import math
 import random
 import gym
+import wandb
 
 def _get_distribution_of_labels(dataset, events_captured):
     potential_events_list = sorted(list(events_captured))
@@ -181,13 +182,16 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, use_vel
         print("Before any data augmentation (downsampling or upsampling)")
         print(initial_freq_of_events)
 
+    for event in initial_freq_of_events.keys():
+        wandb.log({"event": event, "initial_freq": initial_freq_of_events[event]})
+
     # Perform downsampling on the dataset
-    dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=250)
+    dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=15)
 
     # Upsample the dataset in one of three ways
     # dataset = upsample_with_smote(dataset, events_captured, use_velocities, k_neighbours=5)
     # dataset = upsample_with_kmeans_smote(dataset, events_captured, use_velocities, k_neighbours=2, num_clusters=10, cluster_balance_threshold=2.0)
-    dataset = upsample_randomly(dataset, events_captured)
+    # dataset = upsample_randomly(dataset, events_captured)
 
     # if see_dataset:
     #     print("After some data augmentation (downsampling or upsampling or both)")
