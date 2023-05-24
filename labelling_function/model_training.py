@@ -17,8 +17,6 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
 
     train_set_size = len(train_data)
     num_batches = math.ceil(train_set_size / train_batch_size)
-    epoch_train_losses = []
-    epoch_test_losses = []
 
     for epoch in range(num_epochs):
         model.train()
@@ -36,23 +34,11 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
 
             batch_output = model.forward(batch_input)
 
-            # no_event_class = torch.tensor(np.zeros(output_vec_size))
-            # if torch.cuda.is_available():
-            #     no_event_class = no_event_class.cuda()
-
-            # class_weights = [0.01 if torch.equal(target, no_event_class) else 1 for target in batch_target]
-            # class_weights_tensor = torch.tensor(class_weights, dtype=float)
-            # if torch.cuda.is_available():
-            #     class_weights_tensor = class_weights_tensor.cuda()
-
             loss = bce_loss_per_elem(batch_output, batch_target)
-            # loss = weighted_loss.mean()
-
             optimizer.zero_grad()
             total_train_loss += loss.item()
             loss.backward()
 
-            # Don't know what the below line does, look into
             nn.utils.clip_grad_norm_(model.parameters(), 5)
             optimizer.step()
 

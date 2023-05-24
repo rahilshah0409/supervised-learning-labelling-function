@@ -5,6 +5,7 @@ import pickle
 import math
 import random
 import gym
+import wandb
 
 def _get_distribution_of_labels(dataset, events_captured):
     potential_events_list = sorted(list(events_captured))
@@ -89,7 +90,7 @@ def upsample_with_smote(dataset, events_captured, use_velocities, k_neighbours=5
         event_set_label.add(event)
         additional_event_set_labels = [event_set_label] * len(additional_labels)
         new_samples = zip(additional_states, additional_event_set_labels)
-        check_generated_samples(new_samples, use_velocities, event)
+        check_generated_samples(additional_states, use_velocities, event)
         final_dataset.extend(new_samples)
 
     return final_dataset
@@ -120,7 +121,7 @@ def upsample_with_kmeans_smote(dataset, events_captured, use_velocities, k_neigh
         event_set_label.add(event)
         additional_event_set_labels = [event_set_label] * len(additional_labels)
         new_samples = zip(additional_states, additional_event_set_labels)
-        check_generated_samples(new_samples)
+        check_generated_samples(additional_states, use_velocities, event)
         final_dataset.extend(new_samples)
 
     return final_dataset
@@ -149,9 +150,11 @@ def upsample_randomly(dataset, events_captured):
 def check_generated_samples(new_samples, use_velocities, event):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
                    params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 200})
-    for sample in new_samples:
-        print("The event one should observe in this state is " + str(event))
-        env.see_synthetic_state(sample, use_velocities)
+    img_dir_path = "synthetic_samples/"
+    for i in range(2):
+        print(new_samples[i])
+        # print("The event one should observe in this state is " + str(event))
+        # env.see_synthetic_state(new_samples[i], use_velocities, img_dir_path, str(event) + str(i))
 
 def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, use_velocities, see_dataset=True):
     # Get the inputs
@@ -179,11 +182,14 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, use_vel
         print("Before any data augmentation (downsampling or upsampling)")
         print(initial_freq_of_events)
 
+    for event in initial_freq_of_events.keys():
+        wandb.log({"event": event, "initial_freq": initial_freq_of_events[event]})
+
     # Perform downsampling on the dataset
-    dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=250)
+    dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=15)
 
     # Upsample the dataset in one of three ways
-    dataset = upsample_with_smote(dataset, events_captured, use_velocities, k_neighbours=5)
+    # dataset = upsample_with_smote(dataset, events_captured, use_velocities, k_neighbours=5)
     # dataset = upsample_with_kmeans_smote(dataset, events_captured, use_velocities, k_neighbours=2, num_clusters=10, cluster_balance_threshold=2.0)
     # dataset = upsample_randomly(dataset, events_captured)
 
