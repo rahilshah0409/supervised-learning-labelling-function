@@ -2,8 +2,8 @@ import sys
 
 from dataset_augmentation import get_dataset_for_model_train_and_eval
 sys.path.insert(1, "../")
-from image_segmentation.dataset_labelling_pipeline import generate_event_labels_from_masks
-from image_generation.generate_imgs import run_rand_policy_and_save_traces, save_traces_from_manual_play
+from image_segmentation.dataset_labelling_pipeline import generate_event_labels_from_masks, generate_and_save_masks_for_eps
+from image_generation.generate_imgs import run_rand_policy_and_save_traces
 from labelling_model import State2EventNet
 from model_training import eval_model, train_model
 import wandb
@@ -18,8 +18,7 @@ def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname)
     num_episodes = 5
 
     # Generate training data without labels (images and metadata)
-    # run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
-    save_traces_from_manual_play(env, num_episodes, dataset_dir_path, img_base_fname)
+    run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
 
 def label_dataset(img_dir_path, img_base_fname):
     # Segment the images with Segment Anything
@@ -31,11 +30,11 @@ def label_dataset(img_dir_path, img_base_fname):
     sam_checkpoint = "/vol/bitbucket/ras19/fyp/se-model-checkpoints/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
     filtered_masks_pkl_name_base = "masks"
-    # masks_for_every_ep = generate_and_save_masks_for_eps(trace_data, img_dir_path, sam_checkpoint, model_type, img_base_fname, filtered_masks_pkl_name_base)
+    masks_for_every_ep = generate_and_save_masks_for_eps(trace_data, img_dir_path, sam_checkpoint, model_type, img_base_fname, filtered_masks_pkl_name_base)
 
     # Run algorithm to get the events for each state generated. num_events should be changed here based on empirical analysis on the training data and the labelling done on it
-    events_fname = "events_2.pkl"
-    events_for_every_ep, events_observed = generate_event_labels_from_masks(trace_data, img_dir_path, model_type, filtered_masks_pkl_name_base, img_base_fname, events_fname)
+    events_fname = "test_events.pkl"
+    events_for_every_ep, events_observed = generate_event_labels_from_masks(trace_data, img_dir_path, model_type, filtered_masks_pkl_name_base, img_base_fname, events_fname, masks_for_every_ep)
     return img_dir_path, events_observed
 
 def get_output_size(dynamic_balls):
@@ -49,7 +48,7 @@ def run_labelling_func_framework():
     # Generate training data
     train_data_dir = "/vol/bitbucket/ras19/fyp/dataset2/training/"
     img_base_fname = "step"
-    test_data_dir = "../dataset/test/"
+    test_data_dir = "/vol/bitbucket/ras19/fyp/dataset3/test/"
     test_img_base_fname = "test_step"
 
     # generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
@@ -58,8 +57,8 @@ def run_labelling_func_framework():
     #     pickle.dump(events_captured, f)
 
     # Generate test data
-    generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)
-    # label_dataset(test_data_dir, test_img_base_fname)
+    # generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)
+    label_dataset(test_data_dir, test_img_base_fname)
 
     # TODO: Need to check quality of training and test dataset created by specified metrics
 
@@ -68,7 +67,7 @@ def run_labelling_func_framework():
     #     events_captured = pickle.load(f)
     # events_captured_filtered = sorted(list(filter(lambda pair: pair[0] == "black" or pair[1] == "black", events_captured)))
     
-    # # Create the model (i.e. learnt labelling function)
+    # Create the model (i.e. learnt labelling function)
     # input_size = 52 if use_velocities else 28
     # output_size = 21 if use_velocities else 6
     # num_layers = 6
@@ -76,25 +75,36 @@ def run_labelling_func_framework():
     # labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
 
     # learning_rate = 0.01
-    # num_train_epochs = 500
+    # num_train_epochs = 1000
     # train_batch_size = 32
     # test_batch_size = train_batch_size
+
+    # Initialise weights and biases here
+    # wandb.init(
+    #     project="effect_of_data_augmentation",
+    #     config={
+    #         "learning_rate": learning_rate,
+    #         "epochs": num_train_epochs,
+    #         "num_layers": num_layers,
+    #         "num_neurons": num_neurons 
+    #     }
+    # )
     
-    # # Get the training and test data from what has (already) been generated
+    # Get the training and test data from what has (already) been generated
     # train_data, train_label_distribution, test_data, test_label_distribution = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered, use_velocities, see_dataset=False)
 
-    for event in train_label_distribution.keys():
-        wandb.log({"event": event, "train_freq": train_label_distribution[event]})
+    # for event in train_label_distribution.keys():
+    #     wandb.log({"event": event, "train_freq": train_label_distribution[event]})
 
-    for event in test_label_distribution.keys():
-        wandb.log({"event": event, "test_freq": test_label_distribution[event]})
+    # for event in test_label_distribution.keys():
+        # wandb.log({"event": event, "test_freq": test_label_distribution[event]})
         
 
-    labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured_filtered)
+    # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured_filtered)
 
-    labelling_fn_loc = "trained_model/labelling_fn_artificially_balanced_set_2.pth"
+    # labelling_fn_loc = "trained_model/labelling_fn_artificially_balanced_set_2.pth"
 
-    torch.save(labelling_fn.state_dict(), labelling_fn_loc)
+    # torch.save(labelling_fn.state_dict(), labelling_fn_loc)
 
     # print("Evaluating the initial model (without any training)")
     # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
