@@ -18,6 +18,10 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
     train_set_size = len(train_data)
     num_batches = math.ceil(train_set_size / train_batch_size)
 
+    latest_precision_scores = {}
+    latest_recall_scores = {}
+    latest_f1_scores = {}
+
     for epoch in range(num_epochs):
         model.train()
         total_train_loss = 0
@@ -44,6 +48,9 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
 
         avg_train_loss = round(total_train_loss / num_batches, 5)
         avg_test_loss, precision_scores, recall_scores, f1_scores = eval_model(model, test_data, test_batch_size, events_captured, output_vec_size)
+        latest_precision_scores = precision_scores
+        latest_recall_scores = recall_scores
+        latest_f1_scores = f1_scores
         avg_test_loss = round(avg_test_loss, 5)
         
         wandb.log({"epoch": epoch, 
@@ -58,7 +65,7 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
 
         print("Epoch: {}. Training loss: {}. Test loss: {}".format(epoch, avg_train_loss, avg_test_loss))
 
-    return model
+    return model, precision_scores, recall_scores, f1_scores
 
 def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
     model.eval()

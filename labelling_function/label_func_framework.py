@@ -58,53 +58,58 @@ def run_labelling_func_framework():
 
     # Generate test data
     # generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)
-    label_dataset(test_data_dir, test_img_base_fname)
+    # label_dataset(test_data_dir, test_img_base_fname)
 
     # TODO: Need to check quality of training and test dataset created by specified metrics
 
     # Should I be filtering the irrelevant events here?
-    # with open("events_captured_3.pkl", "rb") as f:
-    #     events_captured = pickle.load(f)
-    # events_captured_filtered = sorted(list(filter(lambda pair: pair[0] == "black" or pair[1] == "black", events_captured)))
+    with open("events_captured_3.pkl", "rb") as f:
+        events_captured = pickle.load(f)
+    events_captured_filtered = sorted(list(filter(lambda pair: pair[0] == "black" or pair[1] == "black", events_captured)))
     
     # Create the model (i.e. learnt labelling function)
-    # input_size = 52 if use_velocities else 28
-    # output_size = 21 if use_velocities else 6
-    # num_layers = 6
-    # num_neurons = 64
-    # labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
+    input_size = 52 if use_velocities else 28
+    output_size = 21 if use_velocities else 6
+    num_layers = 6
+    num_neurons = 64
+    labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
 
-    # learning_rate = 0.01
-    # num_train_epochs = 1000
-    # train_batch_size = 32
-    # test_batch_size = train_batch_size
+    learning_rate = 0.01
+    num_train_epochs = 500
+    train_batch_size = 32
+    test_batch_size = train_batch_size
 
     # Initialise weights and biases here
-    # wandb.init(
-    #     project="effect_of_data_augmentation",
-    #     config={
-    #         "learning_rate": learning_rate,
-    #         "epochs": num_train_epochs,
-    #         "num_layers": num_layers,
-    #         "num_neurons": num_neurons 
-    #     }
-    # )
+    wandb.init(
+        project="effect_of_data_augmentation",
+        config={
+            "learning_rate": learning_rate,
+            "epochs": num_train_epochs,
+            "num_layers": num_layers,
+            "num_neurons": num_neurons 
+        }
+    )
     
     # Get the training and test data from what has (already) been generated
-    # train_data, train_label_distribution, test_data, test_label_distribution = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered, use_velocities, see_dataset=False)
+    train_data, train_label_distribution, test_data, test_label_distribution = get_dataset_for_model_train_and_eval(train_data_dir, events_captured_filtered, use_velocities, see_dataset=False)
 
-    # for event in train_label_distribution.keys():
-    #     wandb.log({"event": event, "train_freq": train_label_distribution[event]})
+    for event in train_label_distribution.keys():
+        wandb.log({"event": event, "train_freq": train_label_distribution[event]})
 
-    # for event in test_label_distribution.keys():
-        # wandb.log({"event": event, "test_freq": test_label_distribution[event]})
+    for event in test_label_distribution.keys():
+        wandb.log({"event": event, "test_freq": test_label_distribution[event]})
         
 
-    # labelling_fn = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured_filtered)
+    labelling_fn, precision_scores, recall_scores, f1_scores = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured_filtered)
 
-    # labelling_fn_loc = "trained_model/labelling_fn_artificially_balanced_set_2.pth"
-
-    # torch.save(labelling_fn.state_dict(), labelling_fn_loc)
+    labelling_fn_loc = "trained_model/final_model.pth"
+    torch.save(labelling_fn.state_dict(), labelling_fn_loc)
+    model_metrics = {"precision": precision_scores,
+                     "recall": recall_scores,
+                     "f1": f1_scores}
+    metrics_loc = "trained_model/final_model_metrics.pkl"
+    with open(metrics_loc, "wb") as f:
+        pickle.dump(model_metrics, f)
 
     # print("Evaluating the initial model (without any training)")
     # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
