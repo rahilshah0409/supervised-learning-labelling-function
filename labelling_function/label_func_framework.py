@@ -3,7 +3,7 @@ import sys
 from dataset_augmentation import get_dataset_for_model_train_and_eval
 sys.path.insert(1, "../")
 from image_segmentation.dataset_labelling_pipeline import generate_event_labels_from_masks, generate_and_save_masks_for_eps
-from image_generation.generate_imgs import run_rand_policy_and_save_traces
+from image_generation.generate_imgs import run_rand_policy_and_save_traces, save_traces_from_manual_play
 from labelling_model import State2EventNet
 from model_training import eval_model, train_model
 import wandb
@@ -18,7 +18,8 @@ def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname)
     num_episodes = 5
 
     # Generate training data without labels (images and metadata)
-    run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
+    # run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
+    save_traces_from_manual_play(env, num_episodes, dataset_dir_path, img_base_fname)
 
 def label_dataset(img_dir_path, img_base_fname):
     # Segment the images with Segment Anything
@@ -48,7 +49,7 @@ def run_labelling_func_framework():
     # Generate training data
     train_data_dir = "/vol/bitbucket/ras19/fyp/dataset2/training/"
     img_base_fname = "step"
-    test_data_dir = "/vol/bitbucket/ras19/fyp/dataset3/test/"
+    test_data_dir = "../dataset4/test/"
     test_img_base_fname = "test_step"
 
     # generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
@@ -57,8 +58,8 @@ def run_labelling_func_framework():
     #     pickle.dump(events_captured, f)
 
     # Generate test data
-    # generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)
-    label_dataset(test_data_dir, test_img_base_fname)
+    generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)
+    # label_dataset(test_data_dir, test_img_base_fname)
 
     # TODO: Need to check quality of training and test dataset created by specified metrics
 
