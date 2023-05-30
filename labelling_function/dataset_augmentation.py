@@ -90,7 +90,7 @@ def upsample_with_smote(dataset, events_captured, use_velocities, k_neighbours=5
         event_set_label.add(event)
         additional_event_set_labels = [event_set_label] * len(additional_labels)
         new_samples = zip(additional_states, additional_event_set_labels)
-        check_generated_samples(additional_states, use_velocities, event)
+        # check_generated_samples(additional_states, use_velocities, event)
         final_dataset.extend(new_samples)
 
     return final_dataset
@@ -156,7 +156,7 @@ def check_generated_samples(new_samples, use_velocities, event):
         # print("The event one should observe in this state is " + str(event))
         # env.see_synthetic_state(new_samples[i], use_velocities, img_dir_path, str(event) + str(i))
 
-def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, use_velocities, see_dataset=True):
+def get_dataset(data_dir_path, events_captured, events_fname, use_velocities, see_dataset=True, is_test=True):
     # Get the inputs
     with open(data_dir_path + "traces_data.pkl", "rb") as f:
         traces_data = pickle.load(f)
@@ -168,7 +168,7 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, use_vel
     num_eps = len(traces_data)
     for ep in range(num_eps):
         sub_dir_path = data_dir_path + "trace_" + str(ep) + "/"
-        with open(sub_dir_path + "events_2.pkl", "rb") as f:
+        with open(sub_dir_path + events_fname, "rb") as f:
             events = pickle.load(f)
         label_list.append(events)
     label_list_conc = np.concatenate(label_list)
@@ -185,32 +185,32 @@ def get_dataset_for_model_train_and_eval(data_dir_path, events_captured, use_vel
     for event in initial_freq_of_events.keys():
         wandb.log({"event": event, "initial_freq": initial_freq_of_events[event]})
 
-    # Perform downsampling on the dataset
-    dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=250)
+    if not is_test:
+        # Perform downsampling on the dataset
+        dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=250)
 
-    # Upsample the dataset in one of three ways
-    # dataset = upsample_with_smote(dataset, events_captured, use_velocities, k_neighbours=5)
-    # dataset = upsample_with_kmeans_smote(dataset, events_captured, use_velocities, k_neighbours=2, num_clusters=10, cluster_balance_threshold=2.0)
-    dataset = upsample_randomly(dataset, events_captured)
+        # Upsample the dataset in one of three ways
+        dataset = upsample_with_smote(dataset, events_captured, use_velocities, k_neighbours=5)
+        # dataset = upsample_with_kmeans_smote(dataset, events_captured, use_velocities, k_neighbours=2, num_clusters=10, cluster_balance_threshold=2.0)
+        # dataset = upsample_randomly(dataset, events_captured)
 
-    # if see_dataset:
-    #     print("After some data augmentation (downsampling or upsampling or both)")
-    #     new_freq_of_events, new_indices = _get_distribution_of_labels(dataset, events_captured)
-    #     print(new_freq_of_events)
-    #     print("The size of the dataset is {}".format(len(dataset)))
+    if see_dataset:
+        print("After some data augmentation (downsampling or upsampling or both)")
+        new_freq_of_events, new_indices = _get_distribution_of_labels(dataset, events_captured)
+        print(new_freq_of_events)
+        print("The size of the dataset is {}".format(len(dataset)))
 
     random.shuffle(dataset)
     
     # Split up dataset into training and test datasets once shuffled
-    final_data_size = len(dataset)
-    cut_off = math.floor((2 * final_data_size) / 3)
-    train_data = dataset[:cut_off]
-    test_data = dataset[cut_off:]
+    # final_data_size = len(dataset)
+    # cut_off = math.floor((2 * final_data_size) / 3)
+    # train_data = dataset[:cut_off]
+    # test_data = dataset[cut_off:]
 
-    train_freq_of_events, _ = _get_distribution_of_labels(train_data, events_captured)
-    test_freq_of_events, _ = _get_distribution_of_labels(test_data, events_captured)
+    freq_of_events, _ = _get_distribution_of_labels(dataset, events_captured)
     
-    return train_data, train_freq_of_events, test_data, test_freq_of_events
+    return dataset, freq_of_events
 
 # Thoughts on dataset handling, downsampling, upsampling, etc
 # Should I downsample before upsampling with SMOTE? More likelihood of noisy datapoints generated because we have so few non-empty labelled datapoints to begin with and now we are trying to match an incredibly high number (950 ish from 15)
