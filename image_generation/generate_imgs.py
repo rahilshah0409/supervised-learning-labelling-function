@@ -86,7 +86,7 @@ if __name__ == "__main__":
         "gym_subgoal_automata:WaterWorldDummy-v0",
         params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 200},
     )
-    dir_path = "../image_segmentation/dynamic_balls/"
+    dir_path = "../image_segmentation/single_trace_experimentation/dynamic_balls/"
     img_base_filename = "step"
     random_seed = None
     num_episodes = 1
