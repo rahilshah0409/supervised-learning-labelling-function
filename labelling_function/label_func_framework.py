@@ -3,7 +3,7 @@ import sys
 from dataset_augmentation import get_dataset
 sys.path.insert(1, "../")
 from image_segmentation.dataset_labelling_pipeline import generate_event_labels_from_masks, generate_and_save_masks_for_eps
-from image_generation.generate_imgs import run_rand_policy_and_save_traces, save_traces_from_manual_play
+from image_generation.generate_imgs import run_rand_policy_and_save_traces
 from labelling_model import State2EventNet
 from model_training import eval_model, train_model
 import wandb
@@ -13,13 +13,12 @@ import torch
 
 def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
-                   params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 300, "random_restart": False})
+                   params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 200})
     random_seed = None
     num_episodes = 5
 
     # Generate training data without labels (images and metadata)
-    # run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
-    save_traces_from_manual_play(env, num_episodes, dataset_dir_path, img_base_fname)
+    run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
 
 def label_dataset(img_dir_path, img_base_fname, events_fname):
     # Segment the images with Segment Anything
@@ -34,7 +33,7 @@ def label_dataset(img_dir_path, img_base_fname, events_fname):
     masks_for_every_ep = generate_and_save_masks_for_eps(trace_data, img_dir_path, sam_checkpoint, model_type, img_base_fname, filtered_masks_pkl_name_base)
 
     # Run algorithm to get the events for each state generated. num_events should be changed here based on empirical analysis on the training data and the labelling done on it
-    events_for_every_ep, events_observed = generate_event_labels_from_masks(trace_data, img_dir_path, model_type, filtered_masks_pkl_name_base, img_base_fname, events_fname)
+    events_for_every_ep, events_observed = generate_event_labels_from_masks(trace_data, img_dir_path, model_type, filtered_masks_pkl_name_base, img_base_fname, events_fname, masks_for_every_ep)
     return img_dir_path, events_observed
 
 def get_output_size(dynamic_balls):
@@ -46,28 +45,28 @@ def run_labelling_func_framework():
     use_velocities = False
 
     # Generate training data
-    train_data_dir = "../fixed_seed_manual_dataset/training/"
+    train_data_dir = "/vol/bitbucket/ras19/fyp/fixed_seed_manual_dataset/training/"
     img_base_fname = "step"
     train_events_fname = "events.pkl"
-    test_data_dir = "../fixed_seed_manual_dataset/test/"
+    test_data_dir = "/vol/bitbucket/ras19/fyp/fixed_seed_manual/test/"
     test_img_base_fname = "test_step"
     test_events_fname = "test_events.pkl"
 
-    generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
-    # train_set_dir_path, events_captured = label_dataset(train_data_dir, img_base_fname, train_events_fname)
+    # generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
+    train_set_dir_path, events_captured = label_dataset(train_data_dir, img_base_fname, train_events_fname)
     # with open("events_captured_3.pkl", "wb") as f:
     #     pickle.dump(events_captured, f)
 
     # Generate test data
-    generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)
-    # label_dataset(test_data_dir, test_img_base_fname)
+    # generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname, test_events_fname)
+    label_dataset(test_data_dir, test_img_base_fname)
 
     # TODO: Need to check quality of training and test dataset created by specified metrics
 
     # Should I be filtering the irrelevant events here?
-    # with open("events_captured_3.pkl", "rb") as f:
-    #     events_captured = pickle.load(f)
-    # events_captured_filtered = sorted(list(filter(lambda pair: pair[0] == "black" or pair[1] == "black", events_captured)))
+    with open("events_captured_fixed_seed.pkl", "rb") as f:
+        events_captured = pickle.load(f)
+    events_captured_filtered = sorted(list(filter(lambda pair: pair[0] == "black" or pair[1] == "black", events_captured)))
     
     # Create the model (i.e. learnt labelling function)
     # input_size = 52 if use_velocities else 28
@@ -139,6 +138,5 @@ def run_labelling_func_framework():
 if __name__ == "__main__":
     labelling_function = run_labelling_func_framework()
     # env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
-    #                params={"generation": "random", "use_velocities": False, "environment_seed": 0, "episode_limit": 200, "random_restart": False})
-    # for i in range(5):
-    #     env.play()
+    #                params={"generation": "random", "use_velocities": True, "environment_seed": 0, "episode_limit": 200})
+    # env.play()
