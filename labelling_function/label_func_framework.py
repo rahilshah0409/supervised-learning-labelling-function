@@ -3,7 +3,7 @@ import sys
 from dataset_augmentation import get_dataset
 sys.path.insert(1, "../")
 from image_segmentation.dataset_labelling_pipeline import generate_event_labels_from_masks, generate_and_save_masks_for_eps
-from image_generation.generate_imgs import run_rand_policy_and_save_traces
+from image_generation.generate_imgs import run_rand_policy_and_save_traces, save_traces_from_manual_play
 from labelling_model import State2EventNet
 from model_training import eval_model, train_model
 import wandb
@@ -13,12 +13,13 @@ import torch
 
 def generate_unlabelled_images(use_velocities, dataset_dir_path, img_base_fname):
     env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
-                   params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 200})
+                   params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 300, "random_restart": False})
     random_seed = None
     num_episodes = 5
 
     # Generate training data without labels (images and metadata)
-    run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
+    # run_rand_policy_and_save_traces(env, num_episodes, dataset_dir_path, img_base_fname, random_seed)
+    save_traces_from_manual_play(env, num_episodes, dataset_dir_path, img_base_fname)
 
 def label_dataset(img_dir_path, img_base_fname, events_fname):
     # Segment the images with Segment Anything
@@ -45,75 +46,75 @@ def run_labelling_func_framework():
     use_velocities = False
 
     # Generate training data
-    train_data_dir = "/vol/bitbucket/ras19/fyp/final_dataset/training/"
+    train_data_dir = "../fixed_seed_manual_dataset/training/"
     img_base_fname = "step"
-    train_events_fname = "events_2.pkl"
-    test_data_dir = "/vol/bitbucket/ras19/fyp/final_dataset/test/"
+    train_events_fname = "events.pkl"
+    test_data_dir = "../fixed_seed_manual_dataset/test/"
     test_img_base_fname = "test_step"
     test_events_fname = "test_events.pkl"
 
-    # generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
+    generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
     # train_set_dir_path, events_captured = label_dataset(train_data_dir, img_base_fname, train_events_fname)
     # with open("events_captured_3.pkl", "wb") as f:
     #     pickle.dump(events_captured, f)
 
     # Generate test data
-    # generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname, test_events_fname)
+    generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname)
     # label_dataset(test_data_dir, test_img_base_fname)
 
     # TODO: Need to check quality of training and test dataset created by specified metrics
 
     # Should I be filtering the irrelevant events here?
-    with open("events_captured_3.pkl", "rb") as f:
-        events_captured = pickle.load(f)
-    events_captured_filtered = sorted(list(filter(lambda pair: pair[0] == "black" or pair[1] == "black", events_captured)))
+    # with open("events_captured_3.pkl", "rb") as f:
+    #     events_captured = pickle.load(f)
+    # events_captured_filtered = sorted(list(filter(lambda pair: pair[0] == "black" or pair[1] == "black", events_captured)))
     
     # Create the model (i.e. learnt labelling function)
-    input_size = 52 if use_velocities else 28
-    output_size = 21 if use_velocities else 6
-    num_layers = 6
-    num_neurons = 64
-    labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
+    # input_size = 52 if use_velocities else 28
+    # output_size = 21 if use_velocities else 6
+    # num_layers = 6
+    # num_neurons = 64
+    # labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
 
-    learning_rate = 0.01
-    num_train_epochs = 500
-    train_batch_size = 32
-    test_batch_size = train_batch_size
+    # learning_rate = 0.01
+    # num_train_epochs = 500
+    # train_batch_size = 32
+    # test_batch_size = train_batch_size
 
     # Initialise weights and biases here
-    wandb.init(
-        project="effect_of_data_augmentation",
-        config={
-            "learning_rate": learning_rate,
-            "epochs": num_train_epochs,
-            "num_layers": num_layers,
-            "num_neurons": num_neurons 
-        }
-    )
+    # wandb.init(
+    #     project="effect_of_data_augmentation",
+    #     config={
+    #         "learning_rate": learning_rate,
+    #         "epochs": num_train_epochs,
+    #         "num_layers": num_layers,
+    #         "num_neurons": num_neurons 
+    #     }
+    # )
     
     # Get the training and test data from what has (already) been generated
-    train_data, train_label_distribution = get_dataset(train_data_dir, events_captured_filtered, train_events_fname, use_velocities, see_dataset=False, is_test=False)
-    test_data, test_label_distribution = get_dataset(test_data_dir, events_captured_filtered, test_events_fname, use_velocities, see_dataset=False, is_test=True)
+    # train_data, train_label_distribution = get_dataset(train_data_dir, events_captured_filtered, train_events_fname, use_velocities, see_dataset=False, is_test=False)
+    # test_data, test_label_distribution = get_dataset(test_data_dir, events_captured_filtered, test_events_fname, use_velocities, see_dataset=False, is_test=True)
 
-    for event in train_label_distribution.keys():
-        wandb.log({"event": event, "train_freq": train_label_distribution[event]})
+    # for event in train_label_distribution.keys():
+    #     wandb.log({"event": event, "train_freq": train_label_distribution[event]})
 
-    for event in test_label_distribution.keys():
-        wandb.log({"event": event, "test_freq": test_label_distribution[event]})
+    # for event in test_label_distribution.keys():
+    #     wandb.log({"event": event, "test_freq": test_label_distribution[event]})
         
-    labelling_fn, precision_scores, recall_scores, f1_scores = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured_filtered)
+    # labelling_fn, precision_scores, recall_scores, f1_scores = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured_filtered)
 
-    model_dir = "trained_model/"
-    base_model_name = "final_model_2"
-    labelling_fn_loc = model_dir + base_model_name + ".pth"
-    torch.save(labelling_fn.state_dict(), labelling_fn_loc)
+    # model_dir = "trained_model/"
+    # base_model_name = "final_model_2"
+    # labelling_fn_loc = model_dir + base_model_name + ".pth"
+    # torch.save(labelling_fn.state_dict(), labelling_fn_loc)
     
-    model_metrics = {"precision": precision_scores,
-                     "recall": recall_scores,
-                     "f1": f1_scores}
-    metrics_loc = model_dir + base_model_name + "_metrics.pkl"
-    with open(metrics_loc, "wb") as f:
-        pickle.dump(model_metrics, f)
+    # model_metrics = {"precision": precision_scores,
+    #                  "recall": recall_scores,
+    #                  "f1": f1_scores}
+    # metrics_loc = model_dir + base_model_name + "_metrics.pkl"
+    # with open(metrics_loc, "wb") as f:
+    #     pickle.dump(model_metrics, f)
 
     # print("Evaluating the initial model (without any training)")
     # eval_model(labelling_fn, test_data, test_batch_size, events_captured, output_size)
@@ -133,10 +134,11 @@ def run_labelling_func_framework():
     #     print("Recall: {}".format(recall_scores[event]))
     #     print("F1: {}".format(f1_scores[event]))
 
-    return labelling_fn
+    # return labelling_fn
 
 if __name__ == "__main__":
-    # labelling_function = run_labelling_func_framework()
-    env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
-                   params={"generation": "random", "use_velocities": True, "environment_seed": 0, "episode_limit": 200})
-    env.play()
+    labelling_function = run_labelling_func_framework()
+    # env = gym.make("gym_subgoal_automata:WaterWorldDummy-v0",
+    #                params={"generation": "random", "use_velocities": False, "environment_seed": 0, "episode_limit": 200, "random_restart": False})
+    # for i in range(5):
+    #     env.play()
