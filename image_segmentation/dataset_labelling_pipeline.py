@@ -38,19 +38,18 @@ def generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model
         #     pickle.dump(unfiltered_masks_for_ep, g)
     return masks_for_every_ep
 
-def save_images_with_masks_and_events(masks_pkl_loc, trace_imgs_dir, trace_img_base_filename, events, dir_to_save_img):
+def save_images_with_masks_and_events(masks_pkl_dir, masks_base_fname, trace_imgs_dir, trace_img_base_filename, events, dir_to_save_img):
     # Get the masks you want to illustrate
-    with open(masks_pkl_loc, "rb") as f:
-        masks_for_ep = pickle.load(f)
-    for i in range(len(masks_for_ep)):
-        masks = masks_for_ep[i]
-        event = events[i]
-        image_loc = trace_imgs_dir + trace_img_base_filename + str(i) + ".png"
+    for step in range(202):
+        with open(masks_pkl_dir + masks_base_fname + str(step) + ".pkl", "rb") as f:
+            masks = pickle.load(f)
+        event = events[step]
+        image_loc = trace_imgs_dir + trace_img_base_filename + str(step) + ".png"
         image = load_img_and_convert_to_three_channels(image_loc)
-        mask_img_filename = "masked_step_" + str(i) + ".png"
+        mask_img_filename = "masked_step_" + str(step) + ".png"
         path = dir_to_save_img + mask_img_filename
         save_image_with_masks(masks, image, path, event)
-        print("Image saved for step {} out of {}".format(i, len(masks_for_ep) - 1))
+        # print("Image saved for step {} out of {}".format(i, len(masks_for_ep) - 1))
 
 def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fname_base, img_base_fname, events_fname, masks_for_every_ep=None):
     num_eps = len(trace_data)
@@ -114,36 +113,37 @@ def inspect_events(events_pkl_loc, model_type):
 
 if __name__ == "__main__":
     events_observed = []
-    traces_dir = "ww_trace_black/"
+    traces_dir = "single_trace_experimentation/dynamic_balls/"
     trace_data_filename = "traces_data.pkl"
-    img_base_filename = "env_step"
-    sam_checkpoint = "/vol/bitbucket/ras19/se-model-checkpoints/sam_vit_h_4b8939.pth"
+    img_base_fname = "step"
+    sam_checkpoint = "/vol/bitbucket/ras19/fyp/se-model-checkpoints/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
-    masks_for_ep_filename = "masks_2.pkl"
-    filtered_masks_for_ep_fname = "filtered_masks_2.pkl"
-    unfiltered_masks_for_ep_fname = "unfiltered_masks_2.pkl"
-    events_fname = "events_2.pkl"
+    masks_for_ep_filename = "masks.pkl"
+    filtered_masks_for_ep_fname = "filtered_masks.pkl"
+    unfiltered_masks_for_ep_fname = "unfiltered_masks.pkl"
+    events_fname = "events.pkl"
+    masks_base_fname = "masks"
 
     with open(traces_dir + trace_data_filename, "rb") as f:
         trace_data = pickle.load(f)
     num_eps = len(trace_data)
 
     masks_for_every_ep = None
-    # masks_for_every_ep, _ = generate_and_save_masks_for_eps(trace_data, traces_dir, sam_checkpoint, model_type, img_base_filename, filtered_masks_for_ep_fname, unfiltered_masks_for_ep_fname)
+    masks_for_every_ep, _ = generate_and_save_masks_for_eps(trace_data, traces_dir, sam_checkpoint, model_type, img_base_fname, masks_base_fname)
 
-    events_for_every_ep, events_observed = generate_event_labels_from_masks(trace_data, traces_dir, model_type, filtered_masks_for_ep_fname, img_base_filename, events_fname)
+    events_for_every_ep, events_observed = generate_event_labels_from_masks(trace_data, traces_dir, model_type, masks_base_fname, img_base_fname, events_fname, masks_for_every_ep)
 
     for i in range(num_eps):
         trace_sub_dir = traces_dir + "trace_" + str(i) + "/"
-        results_dir = trace_sub_dir + model_type + "_results/"
+        results_dir = trace_sub_dir 
         masks_pkl_filename = "masks.pkl"
         trace_img_dir = trace_sub_dir
-        masks_imgs_dir = results_dir + "masks_imgs_2/" 
+        masks_imgs_dir = results_dir + "masks_imgs/" 
         # event_pkl_loc = results_dir + events_fname
         # with open(event_pkl_loc, "rb") as f:
         #     events_ep_i= pickle.load(f)
         events_ep_i = events_for_every_ep[i]
-        save_images_with_masks_and_events(results_dir + filtered_masks_for_ep_fname, trace_img_dir, img_base_filename, events_ep_i, masks_imgs_dir)
+        save_images_with_masks_and_events(results_dir, masks_base_fname, trace_img_dir, img_base_fname, events_ep_i, masks_imgs_dir)
 
     # for i in range(num_eps):
     #     trace_sub_dir = traces_dir + "trace_" + str(i) + "/"
