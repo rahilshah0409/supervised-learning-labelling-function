@@ -69,7 +69,7 @@ def create_event_vocab(masks, image):
         centres.append((x_centre, y_centre))
         rgb_colour = image[y_centre, x_centre, :]
         vocab.add(webcolors.rgb_to_name(rgb_colour))
-    return vocab
+    return vocab, set(), len(masks)
 
 def add_masks_colours(masks, image):
     plt.figure(figsize=(20, 20))
@@ -85,9 +85,20 @@ def add_masks_colours(masks, image):
     return masks
 
 # So far, this method gets the events by looking at the area of every mask and seeing if there is a mask that is smaller, potentially implying that this corresponds to a ball that has something intersecting with it
-def get_events_from_masks_in_state(event_vocab, masks, image):
+# Method extracts events being observed in a state by looking at three edge cases:
+# 1. There is an abnormally small mask
+# 2. There is an abnormally large mask
+# 3. There are less masks than what is expected and an event was observed previously
+# past_events is a set to not have any constraints on how long the agent ball can overlap with any coloured ball
+# expected_no_of_objects is obtained from the initial state
+def get_events_from_masks_in_state(event_vocab, masks, image, past_events, expected_no_of_objects):
     events = set()
     print("The number of masks extracted is {}".format(len(masks)))
+    if expected_no_of_objects < len(masks):
+        # It is quite likely that the agent has started to overlap with a ball of colour X more, so ball of colour X is no longer being picked up as a mask
+        # Likelihood quite high because there is little noise in terms of relevant masks that are picked up by SA (especially after filtering)
+        for event_pair in past_events:
+            events = add_pair_to_events(events, event_pair)
     mask_areas = np.array(list(map(lambda mask: mask['area'], masks)))
     abnormal_mask_indices, common_mask_area = extract_abnormal_masks(mask_areas)
     if abnormal_mask_indices == {}:
@@ -96,19 +107,24 @@ def get_events_from_masks_in_state(event_vocab, masks, image):
         mask_pixels = masks[ix]['segmentation']
         colour_distribution = get_colour_freqs(mask_pixels, image)
         if masks[ix]['area'] < common_mask_area:
-            print("A smaller mask has been found")
+            print("A smaller mask has been found") # Two balls are overlapping with each other slightly
             event = list(colour_distribution.keys())[0]
             if (event in event_vocab):
-                # This is hardcoded in the frozen world because the agent (black) is the only ball that is moving. Think of another way to deal with this issue
-                events = add_pair_to_events(events, (event, 'black'))
-                # events.add(EventLabel(event, 'black'))
+                # TODO: Generalise this so that any two balls can overlap with each other and for that to be detected in this case
+                event_to_add = (event, 'black') if event <= 'black' else ('black', event)
+                events = add_pair_to_events(events, event_to_add)
+                if event_to_add in past_events:
+                    # The agent ball is leaving the ball it has been overlapping with
+                    past_events.remove(event_to_add)
+                else:
+                    # The agent ball is only starting to overlap with the coloured ball
+                    past_events = add_pair_to_events(past_events, event_to_add)
         else:
-            print("A bigger mask has been found")
+            print("A bigger mask has been found") # Probably found because two balls are really close to each other and overlapping a lot
             largest_colour_presences = sorted(colour_distribution, reverse=True)[:2]
             if largest_colour_presences[0] in event_vocab and largest_colour_presences[1] in event_vocab:
                 events = add_pair_to_events(events, (largest_colour_presences[0], largest_colour_presences[1]))
-                # events.add(EventLabel(largest_colour_presences[0], largest_colour_presences[1]))
-    return events
+    return events, past_events
 
 def add_pair_to_events(events, e_pair):
     pair = e_pair
