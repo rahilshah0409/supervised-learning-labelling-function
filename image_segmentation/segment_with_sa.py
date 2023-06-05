@@ -91,15 +91,28 @@ def add_masks_colours(masks, image):
 # 3. There are less masks than what is expected and an event was observed previously
 # past_events is a set to not have any constraints on how long the agent ball can overlap with any coloured ball
 # expected_no_of_objects is obtained from the initial state
-def get_events_from_masks_in_state(event_vocab, masks, image, past_events, expected_no_of_objects):
+def get_events_from_masks_in_state(event_vocab, masks, image, past_events, events_in_prev_state, expected_no_of_objects, less_masks_in_prev_state):
     events = set()
+    less_masks = False
     print("The number of masks extracted is {}".format(len(masks)))
     if expected_no_of_objects > len(masks):
+        no_of_missing_objects = expected_no_of_objects - len(masks)
         # It is quite likely that the agent has started to overlap with a ball of colour X more, so ball of colour X is no longer being picked up as a mask
         # Likelihood quite high because there is little noise in terms of relevant masks that are picked up by SA (especially after filtering)
         print("We are expecting {} objects but we have only identified {}".format(expected_no_of_objects, len(masks)))
+        less_masks = True
+        #for i in range(no_of_missing_objects):
+        #    if i < len(past_events):
+        #        events = add_pair_to_events(events, past_events[i])
         for event_pair in past_events:
             events = add_pair_to_events(events, event_pair)
+    elif events_in_prev_state:
+        for event_pair in events_in_prev_state:
+            if event_pair in past_events:
+                past_events.remove(event_pair)
+    elif less_masks_in_prev_state:
+        # A small mask was detected at the beginning of the agent ball's overlapping with another ball but not at the end
+        past_events = set()
     mask_areas = np.array(list(map(lambda mask: mask['area'], masks)))
     abnormal_mask_indices, common_mask_area = extract_abnormal_masks(mask_areas)
     if abnormal_mask_indices == {}:
@@ -110,22 +123,27 @@ def get_events_from_masks_in_state(event_vocab, masks, image, past_events, expec
         if masks[ix]['area'] < common_mask_area:
             print("A smaller mask has been found") # Two balls are overlapping with each other slightly
             event = list(colour_distribution.keys())[0]
-            if (event in event_vocab):
+            if event in event_vocab:
                 # TODO: Generalise this so that any two balls can overlap with each other and for that to be detected in this case
                 event_to_add = (event, 'black') if event <= 'black' else ('black', event)
                 events = add_pair_to_events(events, event_to_add)
-                if event_to_add in past_events:
-                    # The agent ball is leaving the ball it has been overlapping with
-                    past_events.remove(event_to_add)
+                if event_to_add not in events_in_prev_state:
+                    if less_masks_in_prev_state:
+                        if event_to_add in past_events:
+                            # If there were less masks in the previous state then you need to remove the event. If the event wasn't added in the first place, then that's fine
+                            past_events.remove(event_to_add)
+                    else:
+                        # The agent ball is only starting to overlap with the coloured ball
+                        # past_events.insert(0, event_to_add)
+                        past_events = add_pair_to_events(past_events, event_to_add)
                 else:
-                    # The agent ball is only starting to overlap with the coloured ball
                     past_events = add_pair_to_events(past_events, event_to_add)
         else:
             print("A bigger mask has been found") # Probably found because two balls are really close to each other and overlapping a lot
             largest_colour_presences = sorted(colour_distribution, reverse=True)[:2]
             if largest_colour_presences[0] in event_vocab and largest_colour_presences[1] in event_vocab:
                 events = add_pair_to_events(events, (largest_colour_presences[0], largest_colour_presences[1]))
-    return events, past_events
+    return events, past_events, less_masks
 
 def add_pair_to_events(events, e_pair):
     pair = e_pair

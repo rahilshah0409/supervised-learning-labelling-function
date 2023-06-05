@@ -40,6 +40,41 @@ def get_output_size(dynamic_balls):
     # 21 is obtained from n * (n - 1) / 2 where n is 7 (7 balls)
     return 6 if not dynamic_balls else 21
 
+def check_quality_of_dataset(data_dir, events_fname):
+    trace_data_filename = "traces_data.pkl"
+    with open(data_dir + trace_data_filename, "rb") as f:
+        trace_data = pickle.load(f)
+    no_of_correct_labels = 0
+    no_of_incorrect_labels = 0
+
+    for ep in range(len(trace_data)):
+        sub_dir = data_dir + "trace_" + str(ep) + "/"
+        ep_len = trace_data[ep]["length"]
+        with open(sub_dir + events_fname, "rb") as f:
+            labelled_events = pickle.load(f)
+        ground_truth_events = trace_data[ep]["ground_truth_labels"]
+        for step in range(ep_len):
+            if _events_equivalent(labelled_events[step], ground_truth_events[step]):
+                no_of_correct_labels += 1
+            else:
+                no_of_incorrect_labels += 1
+                print(ground_truth_events[step])
+                print(labelled_events[step])
+    
+    return no_of_correct_labels, no_of_incorrect_labels
+
+def _events_equivalent(detected_events, ground_truth):
+    if not ground_truth and not detected_events:
+        return True
+    elif len(detected_events) != len(ground_truth):
+        return False
+    else:
+        for (agent, coloured) in detected_events:
+            if coloured[0] not in ground_truth and coloured[0] == 'l' and 'g' not in ground_truth:
+                return False
+        return True
+    
+
 def run_labelling_func_framework():
     # Determines whether or not the balls are frozen
     use_velocities = False
@@ -59,41 +94,44 @@ def run_labelling_func_framework():
 
     # Generate test data
     # generate_unlabelled_images(use_velocities, test_data_dir, test_img_base_fname, test_events_fname)
-    label_dataset(test_data_dir, test_img_base_fname, test_events_fname)
+    # label_dataset(test_data_dir, test_img_base_fname, test_events_fname)
 
     # TODO: Need to check quality of training and test dataset created by specified metrics
+    no_of_correct_labels, no_of_incorrect_labels = check_quality_of_dataset(train_data_dir, train_events_fname)
+    print("Correct labels: {}. Incorrect labels: {}".format(no_of_correct_labels, no_of_incorrect_labels))
 
     # Should I be filtering the irrelevant events here?
     with open("events_captured_fixed_seed.pkl", "rb") as f:
         events_captured = pickle.load(f)
     events_captured_filtered = sorted(list(filter(lambda pair: (pair[0] == "black" and pair[1] != "black") or (pair[0] != "black" and pair[1] == "black"), events_captured)))
-    
-    # Create the model (i.e. learnt labelling function)
-    #input_size = 52 if use_velocities else 28
-    #output_size = 21 if use_velocities else 6
-    #num_layers = 6
-    #num_neurons = 64
-    #labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
+    # print(events_captured_filtered)
 
-    #learning_rate = 0.01
-    #num_train_epochs = 500
-    #train_batch_size = 32
-    #test_batch_size = train_batch_size
+    # Create the model (i.e. learnt labelling function)
+    input_size = 52 if use_velocities else 28
+    output_size = 21 if use_velocities else 6
+    num_layers = 6
+    num_neurons = 64
+    labelling_fn = State2EventNet(input_size, output_size, num_layers, num_neurons)
+
+    learning_rate = 0.01
+    num_train_epochs = 500
+    train_batch_size = 32
+    test_batch_size = train_batch_size
 
     # Initialise weights and biases here
-    #wandb.init(
-    #    project="effect_of_fixed_seed",
-    #    config={
-    #        "learning_rate": learning_rate,
-    #        "epochs": num_train_epochs,
-    #         "num_layers": num_layers,
-    #        "num_neurons": num_neurons 
-    #    }
-    #)
+    wandb.init(
+        project="effect_of_fixed_seed",
+        config={
+            "learning_rate": learning_rate,
+            "epochs": num_train_epochs,
+            "num_layers": num_layers,
+            "num_neurons": num_neurons 
+        }
+    )
     
     # Get the training and test data from what has (already) been generated
-    #train_data, train_label_distribution, test_data, test_label_distribution = get_dataset(train_data_dir, events_captured_filtered, train_events_fname, use_velocities, see_dataset=False, is_test=False)
-    # test_data, test_label_distribution = get_dataset(test_data_dir, events_captured_filtered, test_events_fname, use_velocities, see_dataset=False, is_test=True)
+    train_data, train_label_distribution = get_dataset(train_data_dir, events_captured_filtered, train_events_fname, use_velocities, see_dataset=False, is_test=False)
+    test_data, test_label_distribution = get_dataset(test_data_dir, events_captured_filtered, test_events_fname, use_velocities, see_dataset=False, is_test=True)
 
     #for event in train_label_distribution.keys():
     #    wandb.log({"event": event, "train_freq": train_label_distribution[event]})

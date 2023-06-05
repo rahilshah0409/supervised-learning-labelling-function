@@ -134,14 +134,15 @@ def upsample_randomly(dataset, events_captured):
     print(num_desired_samples)
     new_dataset = dataset.copy()
     for state, event_set in dataset:
-        # print("Datapoint {}".format(i))
-        # new_dataset.append((state, event_set))
         if event_set:
             for event in event_set:
+                # print(event_set)
+                # print("Number of events in this event set: {}".format(len(event_set)))
                 already_upsampled = False
                 if event in events_captured and not already_upsampled:
                     curr_freq = initial_freq_of_events[event]
                     amount_to_upsample = math.floor((num_desired_samples - curr_freq)  / curr_freq)
+                    # print("Event: {}. Amount to upsample: {}".format(event, amount_to_upsample))
                     for _ in range(amount_to_upsample):
                         new_dataset.append((state, event_set))
                     already_upsampled = True
@@ -182,36 +183,35 @@ def get_dataset(data_dir_path, events_captured, events_fname, use_velocities, se
         wandb.log({"event": event, "initial_freq": initial_freq_of_events[event]})
 
     # Split up dataset into training and test datasets once shuffled
-    final_data_size = len(dataset)
-    cut_off = math.floor((2 * final_data_size) / 3)
-    train_data = dataset[:cut_off]
-    test_data = dataset[cut_off:]
+    #final_data_size = len(dataset)
+    #cut_off = math.floor((2 * final_data_size) / 3)
+    #train_data = dataset[:cut_off]
+    #test_data = dataset[cut_off:]
 
     if see_dataset:
         print("Before any data augmentation (downsampling or upsampling)")
         print(initial_freq_of_events)
 
-    # if not is_test:
-    # Perform downsampling on the dataset
-    train_data = downsample_dataset(train_data, indices_of_events, num_desired_samples=250)
+    if not is_test:
+        # Perform downsampling on the dataset
+        dataset = downsample_dataset(dataset, indices_of_events, num_desired_samples=500)
 
-    # Upsample the dataset in one of three ways
-    # train_data = upsample_with_smote(train_data, events_captured, use_velocities, k_neighbours=5)
-    # dataset = upsample_with_kmeans_smote(dataset, events_captured, use_velocities, k_neighbours=2, num_clusters=10, cluster_balance_threshold=2.0)
-    train_data = upsample_randomly(train_data, events_captured)
+        # Upsample the dataset in one of three ways
+        # train_data = upsample_with_smote(train_data, events_captured, use_velocities, k_neighbours=5)
+        # dataset = upsample_with_kmeans_smote(dataset, events_captured, use_velocities, k_neighbours=2, num_clusters=10, cluster_balance_threshold=2.0)
+        dataset = upsample_randomly(dataset, events_captured)
 
     if see_dataset:
         print("After some data augmentation (downsampling or upsampling or both)")
-        new_freq_of_events, _ = _get_distribution_of_labels(train_data, events_captured)
+        new_freq_of_events, _ = _get_distribution_of_labels(dataset, events_captured)
         print(new_freq_of_events)
         print("The size of the dataset is {}".format(len(dataset)))
 
-    random.shuffle(train_data)
+    random.shuffle(dataset)
 
-    train_freq_of_events, _ = _get_distribution_of_labels(train_data, events_captured)
-    test_freq_of_events, _ = _get_distribution_of_labels(test_data, events_captured)
+    freq_of_events, _ = _get_distribution_of_labels(dataset, events_captured)
     
-    return train_data, train_freq_of_events, test_data, test_freq_of_events
+    return dataset, freq_of_events
 
 # Thoughts on dataset handling, downsampling, upsampling, etc
 # Should I downsample before upsampling with SMOTE? More likelihood of noisy datapoints generated because we have so few non-empty labelled datapoints to begin with and now we are trying to match an incredibly high number (950 ish from 15)
