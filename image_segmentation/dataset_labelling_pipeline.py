@@ -63,17 +63,20 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fn
         events_for_ep = [set()]
         ep_len = trace_data[ep]["length"]
         sub_dir = trace_dir + "trace_" + str(ep) + "/"
-        trace_img_dir = sub_dir + "trace_imgs/"
-        results_dir = sub_dir + model_type + "_results/"
+        trace_img_dir = sub_dir
+        results_dir = sub_dir
         # Get the masks (either masks for all episodes are given in the arguments or they need to be loaded from the pickle object)
         masks_for_ep = None
         if masks_for_every_ep is not None:
             masks_for_ep = masks_for_every_ep[ep]
+        
+        first_masks = None
+        if masks_for_ep is not None:
+            first_masks = masks_for_ep[0]
         else:
-            with open(sub_dir + "filtered_masks_2.pkl", "rb") as f:
-                masks_for_ep = pickle.load(f)
-
-        first_masks = masks_for_ep[0]
+            first_masks_loc = sub_dir + masks_fname_base + str(0) + ".pkl"
+            with open(first_masks_loc, "rb") as f:
+                first_masks = pickle.load(f)
 
         # Still need to original image here to get the original vocab, can't use the masks alone. This worries me
         # Create the event vocab with the first frame
@@ -86,7 +89,13 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fn
             image_loc = trace_img_dir + img_base_fname + str(step) + ".png"
             image = load_img_and_convert_to_three_channels(image_loc)
             # Get the events at every time step of the episode in question and record this
-            masks_i = masks_for_ep[step]
+            masks_i = None
+            if masks_for_ep is not None:
+                masks_i = masks_for_ep[step]
+            else:
+                masks_i_loc = sub_dir + masks_fname_base + str(step) + ".pkl"
+                with open(masks_i_loc, "rb") as f:
+                    masks_i = pickle.load(f)
             events, past_observed_events = get_events_from_masks_in_state(event_vocab, masks_i, image, past_observed_events, no_of_expected_masks)
             print("Events gathered for step {}".format(step))
             events_observed.update(events)
