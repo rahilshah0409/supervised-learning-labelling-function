@@ -94,9 +94,10 @@ def add_masks_colours(masks, image):
 def get_events_from_masks_in_state(event_vocab, masks, image, past_events, expected_no_of_objects):
     events = set()
     print("The number of masks extracted is {}".format(len(masks)))
-    if expected_no_of_objects < len(masks):
+    if expected_no_of_objects > len(masks):
         # It is quite likely that the agent has started to overlap with a ball of colour X more, so ball of colour X is no longer being picked up as a mask
         # Likelihood quite high because there is little noise in terms of relevant masks that are picked up by SA (especially after filtering)
+        print("We are expecting {} objects but we have only identified {}".format(expected_no_of_objects, len(masks)))
         for event_pair in past_events:
             events = add_pair_to_events(events, event_pair)
     mask_areas = np.array(list(map(lambda mask: mask['area'], masks)))

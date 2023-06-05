@@ -40,7 +40,7 @@ def generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model
 
 def save_images_with_masks_and_events(ep_len, masks_pkl_dir, masks_base_fname, trace_imgs_dir, trace_img_base_filename, events, dir_to_save_img):
     # Get the masks you want to illustrate
-    with open(masks_imgs_dir + "filtered_masks_2.pkl", "rb") as f:
+    with open(masks_pkl_dir + "filtered_masks_2.pkl", "rb") as f:
         masks_for_ep = pickle.load(f)
     for step in range(ep_len):
         masks = masks_for_ep[step]
