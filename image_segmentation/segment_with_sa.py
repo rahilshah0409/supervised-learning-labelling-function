@@ -57,19 +57,27 @@ def print_mask_info(masks_pkl_path, image):
 
 # Either can look at the individual pixels or look at the centre of the box that surrounds the box. Prefer the latter. Assuming x increases as you go to the right and y increases as you go down. Pretty sure the flooring doesn't matter in this function, it is just so I can get whole numbers that I can then use as co-ords
 def create_event_vocab(masks, image):
-    plt.figure(figsize=(20, 20))
     centres = []
     vocab = set()
+    freq_of_colours = {}
+    common_mask_area = 0
     # This is hardcoded to overcome an obstacle where the agent doesn't get picked up. This hard coding should be removed with a better solution- either we make the ball opaque or figure out a way to get the agent in somehow
     for mask in masks:
         # Looking at just the centre is probably flawed, not in the waterworld where the objects are clean but in other environments where the objects are not so exact
         [x, y, width, height] = mask['bbox']
+        # Making an assumption that all the masks will be of the same size, and this is the size that the masks should be
+        common_mask_area = mask['area']
         x_centre = x + math.floor(width / 2)
         y_centre = y + math.floor(height / 2)
         centres.append((x_centre, y_centre))
         rgb_colour = image[y_centre, x_centre, :]
-        vocab.add(webcolors.rgb_to_name(rgb_colour))
-    return vocab, set(), len(masks)
+        colour_name = webcolors.rgb_to_name(rgb_colour)
+        vocab.add(colour_name)
+        if colour_name in freq_of_colours:
+            freq_of_colours[colour_name] += 1
+        else:
+            freq_of_colours[colour_name] = 1
+    return vocab, freq_of_colours, common_mask_area
 
 def add_masks_colours(masks, image):
     plt.figure(figsize=(20, 20))
@@ -91,7 +99,7 @@ def add_masks_colours(masks, image):
 # 3. There are less masks than what is expected and an event was observed previously
 # past_events is a set to not have any constraints on how long the agent ball can overlap with any coloured ball
 # expected_no_of_objects is obtained from the initial state
-def get_events_from_masks_in_state(event_vocab, masks, image, past_events, events_in_prev_state, expected_no_of_objects, less_masks_in_prev_state):
+def _get_events_from_masks_in_state(event_vocab, masks, image, expected_freq_of_objs, expected_no_of_objs):
     events = set()
     less_masks = False
     print("The number of masks extracted is {}".format(len(masks)))
@@ -144,6 +152,48 @@ def get_events_from_masks_in_state(event_vocab, masks, image, past_events, event
             if largest_colour_presences[0] in event_vocab and largest_colour_presences[1] in event_vocab:
                 events = add_pair_to_events(events, (largest_colour_presences[0], largest_colour_presences[1]))
     return events, past_events, less_masks
+
+def get_events_from_masks_in_state(event_vocab, masks, image, expected_freq_of_objs, expected_no_of_objs, common_obj_size):
+    no_of_masks_missing = expected_no_of_objs - len(masks)
+    freq_of_objs = {}
+    events = set()
+    for mask in masks:
+        mask_area = mask['area']
+        mask_pixels = mask['segmentation']
+        colour_distribution = get_colour_freqs(mask_pixels, image)
+        # Give some leeway due to potentially poor image resolution
+        if mask_area > common_obj_size + 5:
+            print("A bigger mask has been observed")
+            # We only consider two because we assume, in the frozen setting, that a big mask can only be made up of two masks. This can be made to be more general in the dynamic setting
+            largest_colour_presences = sorted(colour_distribution, reverse=True)[:2]
+            if largest_colour_presences[0] in event_vocab and largest_colour_presences[1] in event_vocab:
+                events = add_pair_to_events(events, (largest_colour_presences[0], largest_colour_presences[1]))
+                freq_of_objs[largest_colour_presences[0]] = 1 if largest_colour_presences[0] not in freq_of_objs else freq_of_objs[largest_colour_presences[0]] + 1
+                freq_of_objs[largest_colour_presences[1]] = 1 if largest_colour_presences[1] not in freq_of_objs else freq_of_objs[largest_colour_presences[1]] + 1
+        elif mask_area < common_obj_size - 5:
+            print("A smaller mask has been observed")
+            event = list(colour_distribution.keys())[0]
+            if event in event_vocab:
+                # TODO: Generalise this so that any two balls can overlap with each other and for that to be detected in this case
+                event_to_add = (event, 'black') if event <= 'black' else ('black', event)
+                events = add_pair_to_events(events, event_to_add)
+                freq_of_objs[event] = 1 if event not in freq_of_objs else freq_of_objs[event] + 1
+        else:
+            colour = list(colour_distribution.keys())[0]
+            freq_of_objs[colour] = 1 if colour not in freq_of_objs else freq_of_objs[colour] + 1
+    missing_colours = set(expected_freq_of_objs.keys()).difference(set(freq_of_objs.keys()))
+    for missing_colour in missing_colours:
+        expected_freq_of_colour = expected_freq_of_objs[missing_colour]
+        for i in range(expected_freq_of_colour):
+            events = add_pair_to_events(events, ('black', missing_colour))
+    for colour in freq_of_objs.keys():
+        freq = freq_of_objs[colour]
+        # There will only be a difference of one in the WaterWorld setting that we are working in. This can simply be adapted if this wasn't the case
+        if expected_freq_of_objs[colour] > freq:
+            # In the frozen setting, we know that the black agent ball is the only ball capable of making a mask disappear, so we know the missing colour must have overlapped with black
+            # In the dynamic setting, how would you know what two balls overlap with each other (look into the past or future?)
+            events = add_pair_to_events(events, (colour, 'black'))
+    return events
 
 def add_pair_to_events(events, e_pair):
     pair = e_pair
