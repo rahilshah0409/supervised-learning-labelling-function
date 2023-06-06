@@ -189,7 +189,7 @@ def get_events_from_masks_in_state(event_vocab, masks, image, expected_freq_of_o
     for colour in freq_of_objs.keys():
         freq = freq_of_objs[colour]
         # There will only be a difference of one in the WaterWorld setting that we are working in. This can simply be adapted if this wasn't the case
-        if expected_freq_of_objs[colour] > freq:
+        if colour in expected_freq_of_objs and expected_freq_of_objs[colour] > freq:
             # In the frozen setting, we know that the black agent ball is the only ball capable of making a mask disappear, so we know the missing colour must have overlapped with black
             # In the dynamic setting, how would you know what two balls overlap with each other (look into the past or future?)
             events = add_pair_to_events(events, (colour, 'black'))
