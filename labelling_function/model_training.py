@@ -127,7 +127,7 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
     precision_scores["no_event"] = no_event_precision
     recall_scores["no_event"] = no_event_recall
     f1_scores["no_event"] = no_event_f1
-    accuracy["no_event"] = no_event_accuracy
+    accuracy_scores["no_event"] = no_event_accuracy
     
     # Return average loss per batch
     avg_loss = total_loss / num_batches
