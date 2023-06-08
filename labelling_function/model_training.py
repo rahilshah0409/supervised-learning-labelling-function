@@ -6,7 +6,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 import numpy as np
 import wandb
-from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
 
 def train_model(model, train_data, train_batch_size, test_data, test_batch_size, lr, num_epochs, output_vec_size, events_captured):
     if torch.cuda.is_available():
@@ -17,10 +17,6 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
 
     train_set_size = len(train_data)
     num_batches = math.ceil(train_set_size / train_batch_size)
-
-    latest_precision_scores = {}
-    latest_recall_scores = {}
-    latest_f1_scores = {}
 
     for epoch in range(num_epochs):
         model.train()
@@ -47,10 +43,7 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
             optimizer.step()
 
         avg_train_loss = round(total_train_loss / num_batches, 5)
-        avg_test_loss, precision_scores, recall_scores, f1_scores = eval_model(model, test_data, test_batch_size, events_captured, output_vec_size)
-        latest_precision_scores = precision_scores
-        latest_recall_scores = recall_scores
-        latest_f1_scores = f1_scores
+        avg_test_loss, precision_scores, recall_scores, f1_scores, accuracy_scores = eval_model(model, test_data, test_batch_size, events_captured, output_vec_size)
         avg_test_loss = round(avg_test_loss, 5)
         
         wandb.log({"epoch": epoch, 
@@ -58,14 +51,15 @@ def train_model(model, train_data, train_batch_size, test_data, test_batch_size,
                    "test_loss": avg_test_loss})
         for event in precision_scores.keys():
             wandb.log({"epoch": epoch,
-                       "test_precision_" + str(event): precision_scores[event],
-                       "test_recall_" + str(event): recall_scores[event],
-                       "test_f1_" + str(event): f1_scores[event]})
+                       str(event) + "_test_precision": precision_scores[event],
+                       str(event) + "_test_recall": recall_scores[event],
+                       str(event) + "_test_f1": f1_scores[event],
+                       str(event) + "_test_accuracy": accuracy_scores[event]})
             
 
         print("Epoch: {}. Training loss: {}. Test loss: {}".format(epoch, avg_train_loss, avg_test_loss))
 
-    return model, precision_scores, recall_scores, f1_scores
+    return model, precision_scores, recall_scores, f1_scores, accuracy_scores
 
 def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
     model.eval()
@@ -76,9 +70,10 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
     acc = []
     pred = []
     events_captured.append("no_event")
-    precision_scores = {event: 0 for event in events_captured}
-    recall_scores = {event: 0 for event in events_captured}
-    f1_scores = {event: 0 for event in events_captured}
+    precision_scores = {event: 0.0 for event in events_captured}
+    recall_scores = {event: 0.0 for event in events_captured}
+    f1_scores = {event: 0.0 for event in events_captured}
+    accuracy_scores = {event: 0.0 for event in events_captured}
 
     with torch.no_grad():
         for bi in range(num_batches):
@@ -116,17 +111,23 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
         precision = precision_score(acc[:, event_i], pred_binary[:, event_i], zero_division='warn')
         recall = recall_score(acc[:, event_i], pred_binary[:, event_i], zero_division='warn')
         f1 = f1_score(acc[:, event_i], pred_binary[:, event_i], zero_division='warn')
+        accuracy = accuracy_score(acc[:, event_i], pred_binary[:, event_i])
         event_tuple = events_captured[event_i]
         precision_scores[event_tuple] = precision
         recall_scores[event_tuple] = recall
         f1_scores[event_tuple] = f1
+        accuracy_scores[event_tuple] = accuracy
 
     no_event_precision = precision_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0, zero_division=0)
     no_event_recall = recall_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0, zero_division=0)
     no_event_f1 = f1_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0, zero_division=0)
+    no_event_accuracy = accuracy_score(np.sum(acc, axis=1) == 0, np.sum(pred_binary, axis=1) == 0)
+    # print(no_event_accuracy)
+    # print(no_event_precision.__class__)
     precision_scores["no_event"] = no_event_precision
     recall_scores["no_event"] = no_event_recall
     f1_scores["no_event"] = no_event_f1
+    accuracy["no_event"] = no_event_accuracy
     
     # Return average loss per batch
     avg_loss = total_loss / num_batches
@@ -177,7 +178,7 @@ def eval_model(model, test_data, batch_size, events_captured, output_vec_size):
     # recall = recall_score(acc, pred_binary, average='micro')
     # f1 = f1_score(acc, pred_binary, average='micro')
 
-    return avg_loss, precision_scores, recall_scores, f1_scores
+    return avg_loss, precision_scores, recall_scores, f1_scores, accuracy_scores
 
 def convert_events_to_output_vectors(events_list, output_vec_size, events_captured):
     vectors_list = []
