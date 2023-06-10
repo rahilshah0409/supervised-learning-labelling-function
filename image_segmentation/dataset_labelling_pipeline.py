@@ -57,7 +57,7 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fn
     events_for_every_ep = []
     # This variable keeps track of every event observed when generating this dataset, hoping that we get full coverage when we generate the dataset
     events_observed = set()
-    for ep in range(1, num_eps):
+    for ep in range(1):
         print("Episode {} in progress".format(ep + 1))
         # Assuming that no event is observed in the initial state. This assumption should be dropped
         events_for_ep = [set()]
@@ -83,7 +83,7 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fn
         first_image_loc = trace_img_dir + img_base_fname + str(0) + ".png"
         first_image = load_img_and_convert_to_three_channels(first_image_loc)
         print("Step 0 snapshot loaded.")
-        event_vocab, freq_of_colours, common_obj_size = create_event_vocab(first_masks, first_image)
+        event_vocab, freq_of_colours, ball_centres, common_obj_size, expected_radius = create_event_vocab(first_masks, first_image)
         no_of_expected_objs = sum(list(freq_of_colours.values()))
         print("Event vocab created.")
         for step in range(1, ep_len):
@@ -97,7 +97,7 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fn
                 masks_i_loc = sub_dir + masks_fname_base + str(step) + ".pkl"
                 with open(masks_i_loc, "rb") as f:
                     masks_i = pickle.load(f)
-            events = get_events_from_masks_in_state(event_vocab, masks_i, image, freq_of_colours, no_of_expected_objs, common_obj_size)
+            events = get_events_from_masks_in_state(event_vocab, masks_i, image, freq_of_colours, no_of_expected_objs, common_obj_size, ball_centres, expected_radius)
             print("Events gathered for step {}".format(step))
             events_observed.update(events)
             events_for_ep.append(events)
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     masks_for_ep_filename = "masks.pkl"
     filtered_masks_for_ep_fname = "filtered_masks.pkl"
     unfiltered_masks_for_ep_fname = "unfiltered_masks.pkl"
-    events_fname = "new_events.pkl"
+    events_fname = "final_final_events.pkl"
     masks_img_fname_base = "masked_step"
     masks_pkl_fname_base = "masks"
 
@@ -143,7 +143,7 @@ if __name__ == "__main__":
         results_dir = trace_sub_dir
         # masks_pkl_filename = "filtered_masks_2.pkl"
         trace_img_dir = trace_sub_dir
-        masks_imgs_dir = results_dir + "new_masks_imgs/" 
+        masks_imgs_dir = results_dir + "final_final_masks_imgs/" 
         event_pkl_loc = results_dir + events_fname
         with open(event_pkl_loc, "rb") as f:
             events_ep_i= pickle.load(f)
