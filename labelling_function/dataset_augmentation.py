@@ -179,8 +179,8 @@ def get_dataset(data_dir_path, events_captured, events_fname, use_velocities, se
     random.shuffle(dataset)
     
     initial_freq_of_events, indices_of_events = _get_distribution_of_labels(dataset, events_captured)
-    # for event in initial_freq_of_events.keys():
-    #     wandb.log({"event": event, "initial_freq": initial_freq_of_events[event]})
+    for event in initial_freq_of_events.keys():
+        wandb.log({"event": event, "initial_freq": initial_freq_of_events[event]})
 
     # Split up dataset into training and test datasets once shuffled
     #final_data_size = len(dataset)

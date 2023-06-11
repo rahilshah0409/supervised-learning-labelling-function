@@ -82,14 +82,14 @@ def run_labelling_func_framework():
     # Generate training data
     train_data_dir = "/vol/bitbucket/ras19/fyp/fixed_seed_manual_dataset/training/"
     img_base_fname = "step"
-    train_events_fname = "new_new_events.pkl"
+    train_events_fname = "final_events.pkl"
     test_data_dir = "/vol/bitbucket/ras19/fyp/fixed_seed_manual_dataset/test/"
     test_img_base_fname = "test_step"
-    test_events_fname = "new_new_test_events.pkl"
+    test_events_fname = "final_test_events.pkl"
 
     # generate_unlabelled_images(use_velocities, train_data_dir, img_base_fname)
     # train_set_dir_path, events_captured = label_dataset(train_data_dir, img_base_fname, train_events_fname)
-    # with open("events_captured_fixed_seed_final.pkl", "wb") as f:
+    # with open("events_captured_fixed_seed_final_final.pkl", "wb") as f:
     #     pickle.dump(events_captured, f)
 
     # Generate test data
@@ -97,10 +97,10 @@ def run_labelling_func_framework():
     # label_dataset(test_data_dir, test_img_base_fname, test_events_fname)
 
     # Should I be filtering the irrelevant events here?
-    with open("events_captured_fixed_seed_final.pkl", "rb") as f:
+    with open("events_captured_fixed_seed_final_final.pkl", "rb") as f:
         events_captured = pickle.load(f)
     events_captured_filtered = sorted(list(filter(lambda pair: (pair[0] == "black" and pair[1] != "black") or (pair[0] != "black" and pair[1] == "black"), events_captured)))
-    # # print(events_captured_filtered)
+    print(events_captured_filtered)
 
     # Need to check quality of training and test dataset created by specified metrics
     # no_of_correct_labels, no_of_incorrect_labels = check_quality_of_dataset(train_data_dir, train_events_fname)
@@ -125,7 +125,7 @@ def run_labelling_func_framework():
 
     # Initialise weights and biases here
     wandb.init(
-       project="effect_of_data_augmentation",
+       project="effect_of_fixed_seed",
        config={
            "learning_rate": learning_rate,
            "epochs": num_train_epochs,
@@ -138,16 +138,16 @@ def run_labelling_func_framework():
     train_data, train_label_distribution = get_dataset(train_data_dir, events_captured_filtered, train_events_fname, use_velocities, see_dataset=False, is_test=False)
     test_data, test_label_distribution = get_dataset(test_data_dir, events_captured_filtered, test_events_fname, use_velocities, see_dataset=False, is_test=True)
 
-    # for event in train_label_distribution.keys():
-    #    wandb.log({"event": event, "train_freq": train_label_distribution[event]})
+    for event in train_label_distribution.keys():
+       wandb.log({"event": event, "train_freq": train_label_distribution[event]})
 
-    # for event in test_label_distribution.keys():
-    #    wandb.log({"event": event, "test_freq": test_label_distribution[event]})
+    for event in test_label_distribution.keys():
+       wandb.log({"event": event, "test_freq": test_label_distribution[event]})
         
     labelling_fn, precision_scores, recall_scores, f1_scores, accuracy_scores = train_model(labelling_fn, train_data, train_batch_size, test_data, test_batch_size, learning_rate, num_train_epochs, output_size, events_captured_filtered)
 
     model_dir = "trained_model/"
-    base_model_name = "model_fixed_seed_improved"
+    base_model_name = "model_fixed_seed_improved_again"
     labelling_fn_loc = model_dir + base_model_name + ".pth"
     torch.save(labelling_fn.state_dict(), labelling_fn_loc)
     
