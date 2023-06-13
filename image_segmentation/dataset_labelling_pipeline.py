@@ -57,7 +57,7 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fn
     events_for_every_ep = []
     # This variable keeps track of every event observed when generating this dataset, hoping that we get full coverage when we generate the dataset
     events_observed = set()
-    for ep in range(1):
+    for ep in range(num_eps):
         print("Episode {} in progress".format(ep + 1))
         # Assuming that no event is observed in the initial state. This assumption should be dropped
         events_for_ep = [set()]

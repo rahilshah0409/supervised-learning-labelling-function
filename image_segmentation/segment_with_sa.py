@@ -195,6 +195,32 @@ def segment_and_save_image_with_masks(img_path, sam_checkpoint, model_type, filt
     # save_image_with_masks(filtered_masks, image, img_with_filtered_masks_path)
     # save_image_with_masks(unfiltered_masks, image, img_with_unfiltered_masks_path)
 
+def check_accuracy_of_ball_detection(data_dir, expected_no_of_balls, expected_ball_area):
+    with open(data_dir + "traces_data.pkl", "rb") as f:
+        trace_data = pickle.load(f)
+    num_eps = len(trace_data)
+    inaccurate_states = 0
+    accurate_states = 0
+    for ep in range(num_eps):
+        sub_dir = data_dir + "trace_" + str(ep) + "/"
+        ep_len = trace_data[ep]['length']
+        for step in range(ep_len):
+            masks_i_loc = sub_dir + "masks" + str(step) + ".pkl"
+            with open(masks_i_loc, "rb") as f:
+                masks = pickle.load(f)
+            if len(masks) != expected_no_of_balls:
+                inaccurate_states += 1
+                break
+            abnormally_sized_mask_found = False
+            for mask in masks:
+                if mask['area'] < expected_ball_area - 5 or mask['area'] > expected_ball_area + 5:
+                    inaccurate_states += 1
+                    abnormally_sized_mask_found = True
+                    break
+            if not abnormally_sized_mask_found:
+                accurate_states += 1
+    return accurate_states, inaccurate_states
+
 if __name__ == "__main__":
     dir_path = "single_img_experimentation/touching_balls/"
     orig_img_name = "touching_balls"

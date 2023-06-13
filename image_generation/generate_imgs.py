@@ -79,22 +79,84 @@ def save_traces_from_manual_play(env, num_episodes, dir_path, img_base_filename)
     with open(dir_path + "traces_data.pkl", "wb") as f:
         pickle.dump(trace_data_list, f)
 
+def check_quality_of_dataset(data_dir, events_fname):
+    trace_data_filename = "traces_data.pkl"
+    with open(data_dir + trace_data_filename, "rb") as f:
+        trace_data = pickle.load(f)
+    accuracy_of_labelling = {'r': (0, 0), 'c': (0, 0), 'g': (0, 0), 'y': (0, 0), 'm': (0, 0), 'b': (0, 0), 'none': (0, 0)}
+
+    for ep in range(len(trace_data)):
+        sub_dir = data_dir + "trace_" + str(ep) + "/"
+        ep_len = trace_data[ep]["length"]
+        with open(sub_dir + events_fname, "rb") as f:
+            labelled_events = pickle.load(f)
+        ground_truth_events = trace_data[ep]["ground_truth_labels"]
+        for step in range(ep_len):
+            if _events_equivalent(labelled_events[step], ground_truth_events[step]):
+                if not ground_truth_events[step]:
+                    (correct, incorrect) = accuracy_of_labelling['none']
+                    accuracy_of_labelling = (correct + 1, incorrect)
+                else:
+                    for event in ground_truth_events[step]:
+                        (correct, incorrect) = accuracy_of_labelling[event]
+                        accuracy_of_labelling = (correct + 1, incorrect)
+            else:
+                if not ground_truth_events[step]:
+                    (correct, incorrect) = accuracy_of_labelling['none']
+                    accuracy_of_labelling = (correct, incorrect + 1)
+                else:
+                    for event in ground_truth_events[step]:
+                        (correct, incorrect) = accuracy_of_labelling[event]
+                        accuracy_of_labelling = (correct, incorrect + 1)
+    
+    return accuracy_of_labelling
+
+def _events_equivalent(detected_events, ground_truth):
+    if not ground_truth and not detected_events:
+        return True
+    elif len(detected_events) != len(ground_truth):
+        return False
+    else:
+        for (agent, coloured) in detected_events:
+            if coloured[0] not in ground_truth and coloured[0] == 'l' and 'g' not in ground_truth:
+                return False
+        return True
+
 if __name__ == "__main__":
-    use_velocities = True
+    # old_events_fname = "old_events.pkl"
+    # final_events_fname = "final_events.pkl"
+    # final_dataset_train_dir = "/vol/bitbucket/ras19/fyp/final_dataset/training/"
+    # event_labelling_accuracy_old = check_quality_of_dataset(final_dataset_train_dir, old_events_fname)
+    # event_labelling_accuracy_new = check_quality_of_dataset(final_dataset_train_dir, final_events_fname)
+
+    # print("Accuracy of labelling with the OLD collision detection algorithm")
+    # for event in event_labelling_accuracy_old:
+    #     (correct, incorrect) = event_labelling_accuracy_old[event]
+    #     recall = correct / (correct + incorrect)
+    #     print("Event: " + event + " Recall: {}".format(recall))
+
+    # print("Accuracy of labelling with the NEW collision detection algorithm")
+    # for event in event_labelling_accuracy_new:
+    #     (correct, incorrect) = event_labelling_accuracy_new[event]
+    #     recall = correct / (correct + incorrect)
+    #     print("Event: " + event + " Recall: {}".format(recall))
+    use_velocities = False
     # Initially have coloured balls frozen
     env = gym.make(
         "gym_subgoal_automata:WaterWorldDummy-v0",
-        params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 200},
+        params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 250},
     )
-    dir_path = "../image_segmentation/single_trace_experimentation/dynamic_balls/"
+    random_dir_path = "/vol/bitbucket/ras19/fyp/random_dataset/"
     img_base_filename = "step"
     random_seed = None
-    num_episodes = 1
-    # run_rand_policy_and_save_traces(env, num_episodes, dir_path, img_base_filename, random_seed)
+    num_episodes = 5
+    run_rand_policy_and_save_traces(env, num_episodes, random_dir_path, img_base_filename, random_seed)
     # with open(dir_path + "traces_data.pkl", "rb") as f:
     #     trace_data = pickle.load(f)
     # print(trace_data[0]['length'])
-    save_traces_from_manual_play(env, num_episodes, dir_path, img_base_filename)
+
+    manual_dir_path = "/vol/bitbucket/ras19/fyp/manual_dataset/"
+    save_traces_from_manual_play(env, num_episodes, manual_dir_path, img_base_filename)
     # img_dir_path = "../image_segmentation/ww_trace/"
     # env.play(img_dir_path)
     # ball_area = env.get_ball_area()
