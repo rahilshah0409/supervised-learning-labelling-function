@@ -155,8 +155,8 @@ if __name__ == "__main__":
     #     trace_data = pickle.load(f)
     # print(trace_data[0]['length'])
 
-    manual_dir_path = "/vol/bitbucket/ras19/fyp/manual_dataset/"
-    save_traces_from_manual_play(env, num_episodes, manual_dir_path, img_base_filename)
+    # manual_dir_path = "/vol/bitbucket/ras19/fyp/manual_dataset/"
+    # save_traces_from_manual_play(env, num_episodes, manual_dir_path, img_base_filename)
     # img_dir_path = "../image_segmentation/ww_trace/"
     # env.play(img_dir_path)
     # ball_area = env.get_ball_area()
