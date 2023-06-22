@@ -87,12 +87,12 @@ if __name__ == "__main__":
         "gym_subgoal_automata:WaterWorldDummy-v0",
         params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 300},
     )
-    random_dir_path = "/vol/bitbucket/ras19/fyp/random_dataset/"
+    random_dir_path = "../random_dataset/"
     img_base_filename = "step"
     random_seed = None
     num_episodes = 5
-    run_rand_policy_and_save_traces(env, num_episodes, random_dir_path, img_base_filename, random_seed)
+    # run_rand_policy_and_save_traces(env, num_episodes, random_dir_path, img_base_filename, random_seed)
     
     # Generate unlabelled dataset with dummy task and manual policy
-    manual_dir_path = "/vol/bitbucket/ras19/fyp/manual_dataset/"
-    # save_traces_from_manual_play(env, num_episodes, manual_dir_path, img_base_filename)
+    manual_dir_path = "../manual_dataset/"
+    save_traces_from_manual_play(env, num_episodes, manual_dir_path, img_base_filename)
