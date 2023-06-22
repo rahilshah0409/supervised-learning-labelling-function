@@ -4,16 +4,15 @@ sys.path.insert(1, "../")
 from image_segmentation.segment_with_sa import create_event_vocab, get_events_from_masks_in_state, save_image_with_masks, run_segmentation_on_single_image, add_masks_colours
 from image_segmentation.img_utils import load_img_and_convert_to_three_channels
 
+# Use Segment Anything to identify objects in all state renderings in a dataset
 def generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model_type, img_base_filename, filtered_masks_fname_base):
     num_eps = len(trace_data)
     masks_for_every_ep = []
-    # unfiltered_masks_for_every_ep = []
     for ep in range(num_eps):
         print("EPISODE {}: STARTING MASK GENERATION".format(ep))
         sub_dir = trace_dir + "trace_" + str(ep) + "/"
         ep_len = trace_data[ep]["length"]
         masks_for_ep = []
-        # unfiltered_masks_for_ep = []
         for step in range(ep_len):
             image_loc = sub_dir + img_base_filename + str(step) + ".png"
             print("Starting to generate masks for step {} out of {}".format(step, ep_len - 1))
@@ -25,19 +24,11 @@ def generate_and_save_masks_for_eps(trace_data, trace_dir, sam_checkpoint, model
             with open(filtered_masks_path, "wb") as f:
                 pickle.dump(masks, f)
             masks_for_ep.append(masks)
-            # unfiltered_masks_for_ep.append(unfiltered_masks)
         masks_for_every_ep.append(masks_for_ep)
-        # unfiltered_masks_for_every_ep.append(unfiltered_masks_for_ep)
         print("EPISODE {}: FINISHED MASK GENERATION.".format(ep))
-        # results_dir = sub_dir
-        # filtered_masks_path = results_dir + filtered_masks_fname_base + str(step) + ".pkl"
-        # with open(filtered_masks_path, "wb") as f:
-        #     pickle.dump(masks_for_ep, f)
-        # unfiltered_masks_path = results_dir + unfiltered_masks_fname
-        # with open(unfiltered_masks_path, "wb") as g:
-        #     pickle.dump(unfiltered_masks_for_ep, g)
     return masks_for_every_ep
 
+# Save renderings of the environment, together with the objects that were detected in that rendering and the events that were labelled.
 def save_images_with_masks_and_events(ep_len, masks_pkl_dir, masks_base_fname, trace_imgs_dir, trace_img_base_filename, events, dir_to_save_img):
     # Get the masks you want to illustrate
     for step in range(ep_len):
@@ -52,14 +43,13 @@ def save_images_with_masks_and_events(ep_len, masks_pkl_dir, masks_base_fname, t
         save_image_with_masks(masks, image, path, event)
         # print("Image saved for step {} out of {}".format(i, len(masks_for_ep) - 1))
 
+# Creates the event labels for the dataset, given that the objects have been identified with Segment Anything
 def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fname_base, img_base_fname, events_fname, masks_for_every_ep=None):
     num_eps = len(trace_data)
     events_for_every_ep = []
-    # This variable keeps track of every event observed when generating this dataset, hoping that we get full coverage when we generate the dataset
     events_observed = set()
     for ep in range(num_eps):
         print("Episode {} in progress".format(ep + 1))
-        # Assuming that no event is observed in the initial state. This assumption should be dropped
         events_for_ep = [set()]
         ep_len = trace_data[ep]["length"]
         sub_dir = trace_dir + "trace_" + str(ep) + "/"
@@ -78,8 +68,7 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fn
             with open(first_masks_loc, "rb") as f:
                 first_masks = pickle.load(f)
 
-        # Still need to original image here to get the original vocab, can't use the masks alone. This worries me
-        # Create the event vocab with the first frame
+        # Create the event configuration with the first frame
         first_image_loc = trace_img_dir + img_base_fname + str(0) + ".png"
         first_image = load_img_and_convert_to_three_channels(first_image_loc)
         print("Step 0 snapshot loaded.")
@@ -89,7 +78,6 @@ def generate_event_labels_from_masks(trace_data, trace_dir, model_type, masks_fn
         for step in range(1, ep_len):
             image_loc = trace_img_dir + img_base_fname + str(step) + ".png"
             image = load_img_and_convert_to_three_channels(image_loc)
-            # Get the events at every time step of the episode in question and record this
             masks_i = None
             if masks_for_ep is not None:
                 masks_i = masks_for_ep[step]
@@ -133,7 +121,7 @@ if __name__ == "__main__":
     num_eps = len(trace_data)
 
     masks_for_every_ep = None
-    # masks_for_every_ep, _ = generate_and_save_masks_for_eps(trace_data, traces_dir, sam_checkpoint, model_type, img_base_fname, masks_base_fname)
+    masks_for_every_ep, _ = generate_and_save_masks_for_eps(trace_data, traces_dir, sam_checkpoint, model_type, img_base_fname, masks_pkl_fname_base)
 
     events_for_every_ep, events_observed = generate_event_labels_from_masks(trace_data, traces_dir, model_type, masks_pkl_fname_base, img_base_fname, events_fname, masks_for_every_ep)
 
@@ -141,31 +129,9 @@ if __name__ == "__main__":
         ep_len = trace_data[i]["length"]
         trace_sub_dir = traces_dir + "trace_" + str(i) + "/"
         results_dir = trace_sub_dir
-        # masks_pkl_filename = "filtered_masks_2.pkl"
         trace_img_dir = trace_sub_dir
         masks_imgs_dir = results_dir + "final_final_masks_imgs/" 
         event_pkl_loc = results_dir + events_fname
         with open(event_pkl_loc, "rb") as f:
             events_ep_i= pickle.load(f)
-        # events_ep_i = events_for_every_ep[i]
         save_images_with_masks_and_events(ep_len, trace_sub_dir, masks_img_fname_base, trace_img_dir, img_base_fname, events_ep_i, masks_imgs_dir)
-
-    # for i in range(num_eps):
-    #     trace_sub_dir = traces_dir + "trace_" + str(i) + "/"
-    #     trace_img_dir = trace_sub_dir + "trace_imgs/"
-    #     masks_pkl_loc = trace_sub_dir + model_type + "_results/" + unfiltered_masks_for_ep_fname
-    #     # events_pkl_loc = trace_sub_dir + model_type + "_results/events.pkl"
-    #     # inspect_events(events_pkl_loc, model_type)
-    #     with open(masks_pkl_loc, "rb") as f:
-    #         masks = pickle.load(f)
-    #     for j in range(len(masks)):
-    #         print("STEP {}".format(j))
-    #         image_loc = trace_img_dir + img_base_filename + str(j) + ".png"
-    #         image = load_img_and_convert_to_three_channels(image_loc)
-    #         masks_step_j = masks[j]
-    #         masks_step_j = add_masks_colours(masks_step_j, image)
-    #         print("No of masks: {}".format(len(masks_step_j)))
-    #         mask_areas = list(map(lambda mask: mask['area'], masks_step_j))
-    #         print("Mask areas: " + str(mask_areas))
-    #         colours = list(map(lambda mask: mask['colour'], masks_step_j))
-    #         print("Mask colours: " + str(colours))

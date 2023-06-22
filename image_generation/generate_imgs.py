@@ -1,4 +1,3 @@
-# Note that the playing of the environment to generate the images of the trace requires the use of the WaterWorld environment, which in turn requires Python version 3.7. This conflicts with the need for Python version 3.8 and above for Segment Anything. The generation of images and image segmentation of said images, in light of this, were treated as two separate tasks.
 import random
 import gym
 import os
@@ -6,13 +5,14 @@ import pickle
 
 ball_area = None
 
+# Chooses one of five actions randomly
 def choose_action(seed):
     NUM_ACTIONS = 5
     random.seed(seed)
     action = random.randint(0, NUM_ACTIONS - 1)
     return action
     
-# Note that if you wanted to run multiple traces, only the last trace will be saved because you will be overriding each image in the same directory (same name). Ideally want this functionality to move up to the function above. Move onto this later because we are only running one trace (but maybe have sub directory for each trace and corresponding images?)
+# Runs an agent following a random policy against a particular WaterWorld task (specified by the environment passed as the first argument)
 def run_rand_policy_and_save_traces(env, num_episodes, dir_path, img_base_filename, random_seed=None):
     events_per_episode = []
     trace_data_list = []
@@ -29,7 +29,6 @@ def run_rand_policy_and_save_traces(env, num_episodes, dir_path, img_base_filena
         print("Episode {} in progress".format(ep + 1))
 
         state = env.reset()
-        # Some rendering and saving of the image you get. INSERT HERE
         env.save_and_render(sub_dir_path, img_base_filename, 0)
         states = []
         states.append(state)
@@ -46,7 +45,6 @@ def run_rand_policy_and_save_traces(env, num_episodes, dir_path, img_base_filena
             state = next_state
             states.append(state)
 
-            # if (observations != set()):
             events_observed.append(observations)
             if done:
                 trace_data_i["length"] = t + 1
@@ -59,6 +57,7 @@ def run_rand_policy_and_save_traces(env, num_episodes, dir_path, img_base_filena
     with open(dir_path + "traces_data.pkl", "wb") as f:
         pickle.dump(trace_data_list, f)
 
+# Saves the state traces made through human demonstrations
 def save_traces_from_manual_play(env, num_episodes, dir_path, img_base_filename):
     trace_data_list = []
     for ep in range(num_episodes):
@@ -80,9 +79,7 @@ def save_traces_from_manual_play(env, num_episodes, dir_path, img_base_filename)
         pickle.dump(trace_data_list, f)
 
 if __name__ == "__main__":
-    # Generate unlabelled dataset with dummy task and random policy
     use_velocities = False
-    # Initially have coloured balls frozen
     env = gym.make(
         "gym_subgoal_automata:WaterWorldDummy-v0",
         params={"generation": "random", "use_velocities": use_velocities, "environment_seed": 0, "episode_limit": 300},
@@ -91,8 +88,9 @@ if __name__ == "__main__":
     img_base_filename = "step"
     random_seed = None
     num_episodes = 5
-    # run_rand_policy_and_save_traces(env, num_episodes, random_dir_path, img_base_filename, random_seed)
+    manual_dir_path = "../manual_dataset/"
     
     # Generate unlabelled dataset with dummy task and manual policy
-    manual_dir_path = "../manual_dataset/"
+    run_rand_policy_and_save_traces(env, num_episodes, random_dir_path, img_base_filename, random_seed)
+    
     save_traces_from_manual_play(env, num_episodes, manual_dir_path, img_base_filename)

@@ -33,6 +33,7 @@ def check_quality_of_dataset(data_dir, events_fname):
     
     return accuracy_of_labelling
 
+# Helper method to check if a ground truth event observed has been labelled
 def _events_equivalent(detected_events, ground_truth):
     if not ground_truth and not detected_events:
         return True
@@ -72,23 +73,3 @@ def accuracy_of_labelling(events_fname, data_dir):
         (correct, incorrect) = event_labelling_accuracy[event]
         recall = correct / (correct + incorrect)
         print("Event: " + event + " Recall: {}".format(recall))
-
-if __name__ == "__main__": 
-    # Evaluating variety of dataset created from a random and manual policy
-    manual_dataset_dir = "/vol/bitbucket/ras19/fyp/final_manual_dataset/"
-    random_dataset_dir = "/vol/bitbucket/ras19/fyp/final_random_dataset/"
-
-    # print("Dataset with manual policy")
-    # get_original_dataset_distribution(manual_dataset_dir)
-    print("Dataset with random policy")
-    get_original_dataset_distribution(random_dataset_dir)
-
-    # Accuracy of old and new labelling of final_dataset training data
-    # old_events_fname = "old_events.pkl"
-    # final_events_fname = "final_events.pkl"
-    # final_dataset_train_dir = "/vol/bitbucket/ras19/fyp/final_dataset/training/"
-    # print("Accuracy of OLD labelling for final_dataset")
-    # accuracy_of_labelling(old_events_fname, final_dataset_train_dir)
-
-    # print("Accuracy of NEW labelling for final dataset")
-    # accuracy_of_labelling(final_events_fname, final_dataset_train_dir)

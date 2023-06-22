@@ -5,25 +5,29 @@ import matplotlib.patches as patches
 from PIL import Image
 import webcolors
 
+# Loads an image and converts it to a 3 channel RBG image
 def load_img_and_convert_to_three_channels(path_to_img):
     img = np.asarray(Image.open(path_to_img))
     three_channel_img = cv.cvtColor(img, cv.COLOR_RGBA2RGB)
     return three_channel_img
 
+# Saves a given image to the specified directory
 def save_image(img_numpy, directory):
     image = Image.fromarray(img_numpy, "RGB")
     image.save(directory)
 
+# Converts a colour in RGB format to its hex value
 def convert_rgb_to_hex(rgb):
     return "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
 
+# Display image with axis
 def save_image_with_axis(img, path):
     plt.figure(figsize=(20, 20))
     plt.imshow(img)
     plt.axis('on')
     plt.savefig(path)
 
-# This can only be done if you haven't ssh'ed into a lab machine (i.e. you are on your local machine or on the lab machine directly)
+# Display image
 def show_image(img, masks=None):
     plt.figure(figsize=(20, 20))
     plt.imshow(img)
@@ -32,6 +36,7 @@ def show_image(img, masks=None):
     plt.axis('off')
     plt.show()
 
+# Show image with masks
 def show_anns(anns):
     if len(anns) == 0:
         return
@@ -49,6 +54,7 @@ def show_anns(anns):
         mask_on_image = np.dstack((img, m * 0.35))
         ax.imshow(mask_on_image)
 
+# Save a snapshot of the WaterWorld environment with the masks that have automatically generated with Segment Anything
 def save_image_with_masks(masks, image, path, event=None):
     plt.figure(figsize=(20, 20))
     plt.imshow(image)
@@ -63,6 +69,7 @@ def save_image_with_masks(masks, image, path, event=None):
     plt.savefig(path)
     plt.close()
 
+# Construct and return a dictionary that visualises the colour distribution in a mask
 def get_colour_freqs(mask, image):
     colour_freq = {}
     for i in range(len(mask)):
